@@ -5,7 +5,6 @@
 
 #include <iostream>
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 
 bool initGLFW(GLFWwindow** window);
@@ -20,6 +19,20 @@ int main()
 	if (!initGLFW(&win)) return -1;
 
 	GUI gui = GUI(win);
+
+
+	glfwSetWindowUserPointer(win, &gui);
+
+	// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+	// ---------------------------------------------------------------------------------------------
+	glfwSetFramebufferSizeCallback(win, [](GLFWwindow* window, int width, int height) -> void {
+		// make sure the viewport matches the new window dimensions; note that width and
+		// height will be significantly larger than specified on retina displays.
+		glViewport(0, 0, width, height);
+		GUI* gui = (GUI*)glfwGetWindowUserPointer(window);
+		gui->framebufferSizeCallback(window, width, height);
+		glfwSwapBuffers(window);
+	});
 
 	// render loop
 	// -----------
@@ -49,20 +62,11 @@ int main()
 	return 0;
 }
 
-void processInput(GLFWwindow *window)
-{
+void processInput(GLFWwindow *window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-{
-	// make sure the viewport matches the new window dimensions; note that width and
-	// height will be significantly larger than specified on retina displays.
-	glViewport(0, 0, width, height);
-}
 
 bool initGLFW(GLFWwindow** window) {
 	// glfw: initialize and configure

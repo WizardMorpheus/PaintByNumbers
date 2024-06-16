@@ -9,10 +9,10 @@
 #include "imfilebrowser/imfilebrowser.h"
 
 #include <format>
+#include <vector>
 
 GUI::GUI(GLFWwindow *window)
 {
-
     this->fileMenuOpen = false;
     this->loading = false;
     this->saving = false;
@@ -21,6 +21,10 @@ GUI::GUI(GLFWwindow *window)
 
     this->numColors = 16;
     this->mainMenuHeight = 0;
+    this->quantizationColors = std::vector<float*>();
+    for (int i = 0; i < numColors; i++) {
+        quantizationColors.push_back(new float[4]);
+    }
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -30,9 +34,11 @@ GUI::GUI(GLFWwindow *window)
     this->io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     this->io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
+
     int w,h;
     glfwGetFramebufferSize(window, &w, &h);
-    this->io.DisplaySize = ImVec2(w,h);
+    this->io.DisplaySize = ImVec2(w, h);
+
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -44,10 +50,6 @@ GUI::GUI(GLFWwindow *window)
 }
 
 void GUI::render(GLFWwindow* window) {
-
-        int w,h;
-        glfwGetFramebufferSize(window, &w, &h);
-        this->io.DisplaySize = ImVec2(w,h);
 
     // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
@@ -86,13 +88,33 @@ void GUI::render(GLFWwindow* window) {
 
         if (this->quantized) {
             ImGui::SetNextWindowPos(ImVec2(0, this->mainMenuHeight));
-            ImGui::SetNextWindowSize(ImVec2(150, this->io.DisplaySize.y - this->mainMenuHeight));
+            ImGui::SetNextWindowSize(ImVec2(this->quantizationMenuWidth, this->io.DisplaySize.y - this->mainMenuHeight));
             if (ImGui::Begin("Quantization Menu", nullptr, ImGuiWindowFlags_NoCollapse |
                                                            ImGuiWindowFlags_NoResize)) {
-                const char* t = std::format("#Colors: {}", this->numColors).c_str();
-                ImGui::Text(t);
+                ImGui::Text(std::format("#Colors: {}", this->numColors).c_str());
+                ImGui::Separator();
+                
+                for (int i = 0; i < this->quantizationColors.size(); i++) {
+                    ImGui::ColorEdit4(std::format("Color {}", i).c_str(), this->quantizationColors[i]);
+                }
+
                 ImGui::End();
             }
+        }
+
+
+        ImGui::SetNextWindowPos(ImVec2(this->quantized ? this->quantizationMenuWidth : 0, this->mainMenuHeight));
+        ImGui::SetNextWindowSize(ImVec2(this->io.DisplaySize.x - (this->quantized ? this->quantizationMenuWidth : 0),
+                                        this->io.DisplaySize.y - this->mainMenuHeight));
+        if (ImGui::Begin("Image", nullptr, ImGuiWindowFlags_NoResize |
+                                           ImGuiWindowFlags_NoScrollbar |
+                                           ImGuiWindowFlags_NoScrollWithMouse |
+                                           ImGuiWindowFlags_NoCollapse)) {
+            //helloo
+
+
+
+            ImGui::End();
         }
 
 
@@ -119,6 +141,23 @@ void GUI::cleanup() {
     ImGui::DestroyContext();
 }
 
+void GUI::framebufferSizeCallback(GLFWwindow *window, int width, int height) {
+    this->io.DisplaySize = ImVec2(width, height);
+    this->render(window);
+}
+
 bool GUI::getQuantized() {
     return this->quantized;
+}
+
+std::vector<float *> GUI::getQuantizationColors() {
+    return std::vector<float *>(this->quantizationColors);
+}
+
+bool GUI::setQuantizationColor(int index, float *color) {
+    if (index < this->quantizationColors.size()) {
+        this->quantizationColors.at(index) = color;
+        return true;
+    }
+    return false;
 }

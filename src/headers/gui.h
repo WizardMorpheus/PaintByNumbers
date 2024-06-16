@@ -5,6 +5,8 @@
 #include "imfilebrowser/imfilebrowser.h"
 #include "GLFW/glfw3.h"
 
+#include <vector>
+
 class GUI {
 private:
 	// Our state
@@ -17,6 +19,10 @@ private:
 
     int numColors;
     int mainMenuHeight;
+    const int quantizationMenuWidth = 400;
+    std::vector<float*> quantizationColors;
+
+
 
 public:
     GUI(GLFWwindow* window);
@@ -25,9 +31,13 @@ public:
 
     void cleanup();
 
+    void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+
     bool getQuantized();
+    std::vector<float*> getQuantizationColors();
+
+    bool setQuantizationColor(int index, float* color);
 
 };
-
 
 #endif
