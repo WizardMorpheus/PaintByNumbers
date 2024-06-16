@@ -22,7 +22,9 @@ private:
     const int quantizationMenuWidth = 400;
     std::vector<float*> quantizationColors;
 
+    GLuint crntTexID;
 
+    GLuint(* loadCallback)(const char* filePath);
 
 public:
     GUI(GLFWwindow* window);
@@ -37,6 +39,8 @@ public:
     std::vector<float*> getQuantizationColors();
 
     bool setQuantizationColor(int index, float* color);
+    void setCrntTexId(GLuint texID);
+    void setLoadCallback(GLuint(* func)(const char* filePath));
 
 };
 

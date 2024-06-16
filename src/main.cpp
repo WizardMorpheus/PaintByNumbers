@@ -1,7 +1,10 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stbImage/stb_image.h"
 
 #include "headers/GUI.h"
+
 
 #include <iostream>
 
@@ -9,10 +12,13 @@ void processInput(GLFWwindow *window);
 
 bool initGLFW(GLFWwindow** window);
 
+GLuint loadTex(const char* filePath);
+
 // settings
 const unsigned int SCR_WIDTH = 1920;
 const unsigned int SCR_HEIGHT = 1080;
 const char* SCR_NAME = "Starter";
+
 int main()
 {
 	GLFWwindow* win;
@@ -20,6 +26,7 @@ int main()
 
 	GUI gui = GUI(win);
 
+	gui.setLoadCallback(&loadTex);
 
 	glfwSetWindowUserPointer(win, &gui);
 
@@ -99,4 +106,32 @@ bool initGLFW(GLFWwindow** window) {
 	}
 
 	return true;
+}
+
+GLuint loadTex(const char *filePath)
+{
+    int x,y,n;
+    unsigned char* data = stbi_load(filePath, &x, &y, &n, 4);
+    
+    if (data == NULL) return NULL;
+
+	GLuint ret;
+
+    glDeleteTextures(1, &ret);
+    glGenTextures(1, &ret);
+
+    // "Bind" the newly created texture : all future texture functions will modify this texture
+    glBindTexture(GL_TEXTURE_2D, ret);
+
+    // Give the image to OpenGL
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    glBindTexture(GL_TEXTURE_2D, NULL);
+
+    stbi_image_free(data);
+
+    return ret;
 }

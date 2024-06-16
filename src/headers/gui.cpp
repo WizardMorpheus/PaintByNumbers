@@ -10,6 +10,9 @@
 
 #include <format>
 #include <vector>
+#include <string>
+
+const std::vector<std::string> allowedFileTypes = { ".jpeg", ".jpg", ".png" , ".tga", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".pnm"};
 
 GUI::GUI(GLFWwindow *window)
 {
@@ -25,6 +28,9 @@ GUI::GUI(GLFWwindow *window)
     for (int i = 0; i < numColors; i++) {
         quantizationColors.push_back(new float[4]);
     }
+
+    this->crntTexID = NULL;
+    this->loadCallback = NULL;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -47,6 +53,7 @@ GUI::GUI(GLFWwindow *window)
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
+
 }
 
 void GUI::render(GLFWwindow* window) {
@@ -63,14 +70,14 @@ void GUI::render(GLFWwindow* window) {
 
                 if (ImGui::MenuItem("Load")) {
                     this->fileDialog.SetTitle("Load");
-                    this->fileDialog.SetTypeFilters({ ".*" }) ;
+                    this->fileDialog.SetTypeFilters(allowedFileTypes) ;
                     this->fileDialog.Open();
                     this->loading = true;
                 }
 
                 if (ImGui::MenuItem("Save")) {
                     this->fileDialog.SetTitle("Save");
-                    this->fileDialog.SetTypeFilters({ ".*" }) ;
+                    this->fileDialog.SetTypeFilters(allowedFileTypes) ;
                     this->fileDialog.Open();
                     this->saving = true;
                 }
@@ -111,8 +118,8 @@ void GUI::render(GLFWwindow* window) {
                                            ImGuiWindowFlags_NoScrollWithMouse |
                                            ImGuiWindowFlags_NoCollapse)) {
             //helloo
-
-
+            if (this->crntTexID != NULL)
+                ImGui::Image((ImTextureID)this->crntTexID, ImGui::GetWindowSize());
 
             ImGui::End();
         }
@@ -122,6 +129,15 @@ void GUI::render(GLFWwindow* window) {
             this->fileDialog.Display();
             if (this->fileDialog.HasSelected()) {
                 // load or save
+
+                if (this->loading && this->loadCallback != NULL) {
+                    GLuint temp = this->loadCallback(fileDialog.GetSelected().generic_string().c_str());
+                    if (temp != NULL) this->crntTexID = temp;
+                }
+                if (this->saving) {
+
+                }
+
                 this->fileDialog.ClearSelected();
                 this->fileDialog.Close();
                 this->loading = false;
@@ -160,4 +176,12 @@ bool GUI::setQuantizationColor(int index, float *color) {
         return true;
     }
     return false;
+}
+
+void GUI::setCrntTexId(GLuint texID) {
+    this->crntTexID = texID;
+}
+
+void GUI::setLoadCallback(GLuint(* func)(const char* filePath)) {
+    this->loadCallback = func;
 }
