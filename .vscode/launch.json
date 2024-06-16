@@ -8,7 +8,7 @@
             "name": "g++.exe - debug file",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/debug/myprogram.exe",
+            "program": "${workspaceFolder}/bin/debug/PaintByNumbers.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

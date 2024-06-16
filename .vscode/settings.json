@@ -57,7 +57,8 @@
     "set": "cpp",
     "ratio": "cpp",
     "iomanip": "cpp",
-    "sstream": "cpp"
+    "sstream": "cpp",
+    "format": "cpp"
   },
   "cmake.configureOnOpen": false
 }

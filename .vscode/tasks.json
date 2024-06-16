@@ -16,7 +16,7 @@
                 "-L${workspaceFolder}/lib",
                 "-lglfw3dll",
                 "-o",
-                "${workspaceFolder}/bin/debug/myprogram.exe"
+                "${workspaceFolder}/bin/debug/PaintByNumbers.exe"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

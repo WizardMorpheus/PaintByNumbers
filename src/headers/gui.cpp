@@ -8,12 +8,19 @@
 
 #include "imfilebrowser/imfilebrowser.h"
 
-GUI::GUI(GLFWwindow* window) {
+#include <format>
+
+GUI::GUI(GLFWwindow *window)
+{
 
     this->fileMenuOpen = false;
     this->loading = false;
     this->saving = false;
+    this->quantized = false;
     this->fileDialog = ImGui::FileBrowser();
+
+    this->numColors = 16;
+    this->mainMenuHeight = 0;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -22,6 +29,10 @@ GUI::GUI(GLFWwindow* window) {
     (void)this->io;
     this->io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     this->io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    int w,h;
+    glfwGetFramebufferSize(window, &w, &h);
+    this->io.DisplaySize = ImVec2(w,h);
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -33,6 +44,11 @@ GUI::GUI(GLFWwindow* window) {
 }
 
 void GUI::render(GLFWwindow* window) {
+
+        int w,h;
+        glfwGetFramebufferSize(window, &w, &h);
+        this->io.DisplaySize = ImVec2(w,h);
+
     // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -40,14 +56,16 @@ void GUI::render(GLFWwindow* window) {
 
         // main menu bar
         if (ImGui::BeginMainMenuBar()) {
-            ImGui::SetWindowFontScale(2);
+            ImGui::SetWindowFontScale(1);
             if (ImGui::BeginMenu("file", &this->fileMenuOpen)) {
+
                 if (ImGui::MenuItem("Load")) {
                     this->fileDialog.SetTitle("Load");
                     this->fileDialog.SetTypeFilters({ ".*" }) ;
                     this->fileDialog.Open();
                     this->loading = true;
                 }
+
                 if (ImGui::MenuItem("Save")) {
                     this->fileDialog.SetTitle("Save");
                     this->fileDialog.SetTypeFilters({ ".*" }) ;
@@ -57,8 +75,26 @@ void GUI::render(GLFWwindow* window) {
                 ImGui::EndMenu();
             }
 
+            ImGui::Separator();
+
+            ImGui::Checkbox("Quantize", &this->quantized);
+            
+            this->mainMenuHeight = ImGui::GetWindowHeight();
+
             ImGui::EndMainMenuBar();
         }
+
+        if (this->quantized) {
+            ImGui::SetNextWindowPos(ImVec2(0, this->mainMenuHeight));
+            ImGui::SetNextWindowSize(ImVec2(150, this->io.DisplaySize.y - this->mainMenuHeight));
+            if (ImGui::Begin("Quantization Menu", nullptr, ImGuiWindowFlags_NoCollapse |
+                                                           ImGuiWindowFlags_NoResize)) {
+                const char* t = std::format("#Colors: {}", this->numColors).c_str();
+                ImGui::Text(t);
+                ImGui::End();
+            }
+        }
+
 
         if (this->loading || this->saving) {
             this->fileDialog.Display();
@@ -81,4 +117,8 @@ void GUI::cleanup() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+}
+
+bool GUI::getQuantized() {
+    return this->quantized;
 }

@@ -11,8 +11,12 @@ private:
     bool fileMenuOpen;
     bool loading;
     bool saving;
+    bool quantized;
     ImGuiIO io;
     ImGui::FileBrowser fileDialog;
+
+    int numColors;
+    int mainMenuHeight;
 
 public:
     GUI(GLFWwindow* window);
@@ -20,6 +24,8 @@ public:
     void render(GLFWwindow* window);
 
     void cleanup();
+
+    bool getQuantized();
 
 };
 

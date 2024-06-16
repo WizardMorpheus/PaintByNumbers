@@ -12,7 +12,7 @@
             ],
             "compilerPath": "C:\\msys64\\ucrt64\\bin\\g++.exe",
             "cStandard": "c23",
-            "cppStandard": "gnu++14",
+            "cppStandard": "gnu++20",
             "intelliSenseMode": "clang-x86"
         }
     ],
