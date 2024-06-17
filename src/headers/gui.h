@@ -3,7 +3,7 @@
 
 #include "imgui/imgui.h"
 #include "imfilebrowser/imfilebrowser.h"
-#include "GLFW/glfw3.h"
+#include "opengl.h"
 
 #include <vector>
 
@@ -24,7 +24,7 @@ private:
 
     GLuint crntTexID;
 
-    GLuint(* loadCallback)(const char* filePath);
+    void imguiImageCentred(GLuint Tex, ImVec2 boundingBox);
 
 public:
     GUI(GLFWwindow* window);
@@ -40,7 +40,6 @@ public:
 
     bool setQuantizationColor(int index, float* color);
     void setCrntTexId(GLuint texID);
-    void setLoadCallback(GLuint(* func)(const char* filePath));
 
 };
 

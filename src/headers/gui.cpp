@@ -1,6 +1,11 @@
 #include "GUI.h"
 
-#include "GLFW/glfw3.h"
+#include "opengl.h"
+
+#include "glWrap.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stbImage/stb_image.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_glfw.h"
@@ -13,6 +18,28 @@
 #include <string>
 
 const std::vector<std::string> allowedFileTypes = { ".jpeg", ".jpg", ".png" , ".tga", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".pnm"};
+
+void GUI::imguiImageCentred(GLuint Tex, ImVec2 boundingBox)
+{
+    ImVec2 adjustedSize;
+
+    int dims[2];
+    GLWRAP::queryTex(this->crntTexID, dims, GL_TEXTURE_2D);
+    ImVec2 dimsVec = ImVec2(dims[0], dims[1]);
+
+    if (boundingBox.x/boundingBox.y > dimsVec.x/dimsVec.y) {
+        adjustedSize.y = boundingBox.y;
+        adjustedSize.x = boundingBox.y * (dimsVec.y/dimsVec.x);
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (boundingBox.x - adjustedSize.x) * 0.5f);
+    } else {
+        adjustedSize.x = boundingBox.x;
+        adjustedSize.y = boundingBox.x * (dimsVec.x/dimsVec.y);
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (boundingBox.y - adjustedSize.y) * 0.5f);
+    }
+    ImGui::Image((ImTextureID)this->crntTexID, adjustedSize);
+}
 
 GUI::GUI(GLFWwindow *window)
 {
@@ -30,7 +57,6 @@ GUI::GUI(GLFWwindow *window)
     }
 
     this->crntTexID = NULL;
-    this->loadCallback = NULL;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -118,9 +144,9 @@ void GUI::render(GLFWwindow* window) {
                                            ImGuiWindowFlags_NoScrollWithMouse |
                                            ImGuiWindowFlags_NoCollapse)) {
             //helloo
-            if (this->crntTexID != NULL)
-                ImGui::Image((ImTextureID)this->crntTexID, ImGui::GetWindowSize());
-
+            if (this->crntTexID != NULL) {
+                this->imguiImageCentred(this->crntTexID, ImGui::GetWindowSize());
+            }
             ImGui::End();
         }
 
@@ -130,9 +156,12 @@ void GUI::render(GLFWwindow* window) {
             if (this->fileDialog.HasSelected()) {
                 // load or save
 
-                if (this->loading && this->loadCallback != NULL) {
-                    GLuint temp = this->loadCallback(fileDialog.GetSelected().generic_string().c_str());
-                    if (temp != NULL) this->crntTexID = temp;
+                if (this->loading) {
+                    GLuint temp;
+                    GLWRAP::loadTex(fileDialog.GetSelected().generic_string().c_str(), &temp);
+                    if (temp != NULL)  {
+                        this->crntTexID = temp;
+                    }
                 }
                 if (this->saving) {
 
@@ -180,8 +209,4 @@ bool GUI::setQuantizationColor(int index, float *color) {
 
 void GUI::setCrntTexId(GLuint texID) {
     this->crntTexID = texID;
-}
-
-void GUI::setLoadCallback(GLuint(* func)(const char* filePath)) {
-    this->loadCallback = func;
 }
