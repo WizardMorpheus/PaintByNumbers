@@ -3,6 +3,7 @@
 #include "opengl.h"
 
 #include "glWrap.h"
+#include "quantizer.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stbImage/stb_image.h"
@@ -24,7 +25,7 @@ void GUI::imguiImageCentred(GLuint Tex, ImVec2 boundingBox)
     ImVec2 adjustedSize;
 
     int dims[2];
-    GLWRAP::queryTex(this->crntTexID, dims, GL_TEXTURE_2D);
+    GLWRAP::queryTex(Tex, dims, GL_TEXTURE_2D);
     ImVec2 dimsVec = ImVec2(dims[0], dims[1]);
 
     if (boundingBox.x/boundingBox.y > dimsVec.x/dimsVec.y) {
@@ -38,7 +39,7 @@ void GUI::imguiImageCentred(GLuint Tex, ImVec2 boundingBox)
 
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (boundingBox.y - adjustedSize.y) * 0.5f);
     }
-    ImGui::Image((ImTextureID)this->crntTexID, adjustedSize);
+    ImGui::Image((ImTextureID)Tex, adjustedSize);
 }
 
 GUI::GUI(GLFWwindow *window)
@@ -57,6 +58,7 @@ GUI::GUI(GLFWwindow *window)
     }
 
     this->crntTexID = NULL;
+    this->crntQuantID = NULL;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -144,8 +146,12 @@ void GUI::render(GLFWwindow* window) {
                                            ImGuiWindowFlags_NoScrollWithMouse |
                                            ImGuiWindowFlags_NoCollapse)) {
             //helloo
-            if (this->crntTexID != NULL) {
-                this->imguiImageCentred(this->crntTexID, ImGui::GetWindowSize());
+            if (this->quantized) {
+                if (this->crntQuantID != NULL)
+                    this->imguiImageCentred(this->crntQuantID, ImGui::GetWindowSize());
+            } else {
+                if (this->crntTexID != NULL)
+                    this->imguiImageCentred(this->crntTexID, ImGui::GetWindowSize());
             }
             ImGui::End();
         }
@@ -161,6 +167,10 @@ void GUI::render(GLFWwindow* window) {
                     GLWRAP::loadTex(fileDialog.GetSelected().generic_string().c_str(), &temp);
                     if (temp != NULL)  {
                         this->crntTexID = temp;
+                        QUANTIZER::quantize(this->crntTexID, &temp, this->numColors, &this->quantizationColors);
+                        if (temp != NULL) {
+                            this->crntQuantID = temp;
+                        }
                     }
                 }
                 if (this->saving) {

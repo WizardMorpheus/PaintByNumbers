@@ -23,6 +23,7 @@ private:
     std::vector<float*> quantizationColors;
 
     GLuint crntTexID;
+    GLuint crntQuantID;
 
     void imguiImageCentred(GLuint Tex, ImVec2 boundingBox);
 

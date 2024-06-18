@@ -26,6 +26,11 @@ namespace GLWRAP
      */
     void queryTex(GLuint tex, int* dims, GLenum target);
 
+    /**
+     * loads a shader program from a vertex and fragment shader file path
+     */
+    GLuint LoadShaders(const char* vertex_file_path, const char* fragment_file_path);
+
 } // namespace GLWRAP
 
 
