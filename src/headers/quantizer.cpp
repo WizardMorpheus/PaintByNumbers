@@ -4,6 +4,27 @@
 #include "glWrap.h"
 
 void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::vector<float *> *colors) {
+    
+    // turn our colors into a texture
+    unsigned char colData[colors->size() * 3];
+    for (int i = 0; i < colors->size(); i++){
+        colData[i*3] = (char)(colors->at(i)[0] * 255);
+        colData[i*3 + 1] = (char)(colors->at(i)[1] * 255);
+        colData[i*3 + 2] = (char)(colors->at(i)[2] * 255);
+    }
+    
+    GLuint colorTex;
+    glGenTextures(1, &colorTex);
+    glBindTexture(GL_TEXTURE_2D, colorTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, colors->size(), 1, 0, GL_RGB, GL_UNSIGNED_BYTE, colData);
+    
+    // Poor filtering. Needed !
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+
+    // setup to render
+    
     float vertices[] = {
         1.0f,  1.0f, 0.0f,  //top right
         1.0f, -1.0f, 0.0f,  //bottom right
@@ -57,7 +78,6 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-
     // Set "renderedTexture" as our colour attachement #0
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *quantizedTex, 0);
 
@@ -80,13 +100,23 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
 
     GLuint quantizerProg = GLWRAP::LoadShaders("resources\\shaders\\quantizer.vert", "resources\\shaders\\quantizer.frag");
 
-
     glUseProgram(quantizerProg);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, colorTex);
+
+    glUniform1i(glGetUniformLocation(quantizerProg, "texToQuantize"), 0);
+    glUniform1i(glGetUniformLocation(quantizerProg, "colors"), 1);
+    glUniform1i(glGetUniformLocation(quantizerProg, "numColors"), colors->size());
     
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDeleteFramebuffers(1, &Framebuffer);
-
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -97,5 +127,7 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
     glDeleteVertexArrays(1, &VAO);  
 
     glDeleteProgram(quantizerProg);
+
+    glDeleteTextures(1, &colorTex);
 
 }

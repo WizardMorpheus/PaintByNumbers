@@ -30,12 +30,12 @@ void GUI::imguiImageCentred(GLuint Tex, ImVec2 boundingBox)
 
     if (boundingBox.x/boundingBox.y > dimsVec.x/dimsVec.y) {
         adjustedSize.y = boundingBox.y;
-        adjustedSize.x = boundingBox.y * (dimsVec.y/dimsVec.x);
+        adjustedSize.x = boundingBox.y * (dimsVec.x/dimsVec.y);
 
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (boundingBox.x - adjustedSize.x) * 0.5f);
     } else {
         adjustedSize.x = boundingBox.x;
-        adjustedSize.y = boundingBox.x * (dimsVec.x/dimsVec.y);
+        adjustedSize.y = boundingBox.x * (dimsVec.y/dimsVec.x);
 
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (boundingBox.y - adjustedSize.y) * 0.5f);
     }
@@ -122,6 +122,12 @@ void GUI::render(GLFWwindow* window) {
         }
 
         if (this->quantized) {
+            GLuint temp;
+            QUANTIZER::quantize(this->crntTexID, &temp, this->numColors, &this->quantizationColors);
+            if (temp != NULL) {
+                this->crntQuantID = temp;
+            }
+            
             ImGui::SetNextWindowPos(ImVec2(0, this->mainMenuHeight));
             ImGui::SetNextWindowSize(ImVec2(this->quantizationMenuWidth, this->io.DisplaySize.y - this->mainMenuHeight));
             if (ImGui::Begin("Quantization Menu", nullptr, ImGuiWindowFlags_NoCollapse |
