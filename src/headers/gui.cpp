@@ -82,6 +82,7 @@ GUI::GUI(GLFWwindow *window)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
+    QUANTIZER::setupQuantizer();
 }
 
 void GUI::render(GLFWwindow* window) {
@@ -200,6 +201,7 @@ void GUI::cleanup() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+    QUANTIZER::closeQuantizer();
 }
 
 void GUI::framebufferSizeCallback(GLFWwindow *window, int width, int height) {

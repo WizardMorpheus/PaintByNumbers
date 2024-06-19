@@ -5,6 +5,8 @@
 
 void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::vector<float *> *colors) {
     
+    if (QUANTIZER::qProgramID == NULL) return;
+
     // turn our colors into a texture
     unsigned char colData[colors->size() * 3];
     for (int i = 0; i < colors->size(); i++){
@@ -25,36 +27,6 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
 
     // setup to render
     
-    float vertices[] = {
-        1.0f,  1.0f, 0.0f,  //top right
-        1.0f, -1.0f, 0.0f,  //bottom right
-        -1.0f, -1.0f, 0.0f, //bottom left
-        -1.0f, 1.0f, 0.0f  //top left
-    }; 
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-    };  
-
-    GLuint VBO;
-    glGenBuffers(1, &VBO);  
-    GLuint VAO;
-    glGenVertexArrays(1, &VAO);  
-    GLuint EBO;
-    glGenBuffers(1, &EBO);
-
-    // ..:: Initialization code (done once (unless your object frequently changes)) :: ..
-    // 1. bind Vertex Array Object
-    glBindVertexArray(VAO);
-    // 2. copy our vertices array in a buffer for OpenGL to use
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); 
-    // 3. then set our vertex attributes pointers
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);  
-
 
     int dims[2];
     GLWRAP::queryTex(tex, dims, GL_TEXTURE_2D);
@@ -98,9 +70,9 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
     glViewport(0,0,dims[0],dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
 
 
-    GLuint quantizerProg = GLWRAP::LoadShaders("resources\\shaders\\quantizer.vert", "resources\\shaders\\quantizer.frag");
+    glBindVertexArray(QUANTIZER::qVAO);
 
-    glUseProgram(quantizerProg);
+    glUseProgram(QUANTIZER::qProgramID);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -108,9 +80,9 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, colorTex);
 
-    glUniform1i(glGetUniformLocation(quantizerProg, "texToQuantize"), 0);
-    glUniform1i(glGetUniformLocation(quantizerProg, "colors"), 1);
-    glUniform1i(glGetUniformLocation(quantizerProg, "numColors"), colors->size());
+    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "texToQuantize"), 0);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "colors"), 1);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "numColors"), colors->size());
     
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
 
@@ -122,12 +94,55 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-    glDeleteVertexArrays(1, &VAO);  
-
-    glDeleteProgram(quantizerProg);
-
     glDeleteTextures(1, &colorTex);
 
+}
+
+void QUANTIZER::setupQuantizer() {
+    if (QUANTIZER::qProgramID != NULL) return; 
+
+    static float vertices[] = {
+        1.0f,  1.0f, 0.0f,  //top right
+        1.0f, -1.0f, 0.0f,  //bottom right
+        -1.0f, -1.0f, 0.0f, //bottom left
+        -1.0f, 1.0f, 0.0f  //top left
+    }; 
+    static unsigned int indices[] = {  // note that we start from 0!
+        0, 1, 3,   // first triangle
+        1, 2, 3    // second triangle
+    }; 
+    
+
+    glGenBuffers(1, &QUANTIZER::qVBO);  
+    glGenVertexArrays(1, &QUANTIZER::qVAO);  
+    glGenBuffers(1, &QUANTIZER::qEBO);
+
+    // ..:: Initialization code (done once (unless your object frequently changes)) :: ..
+    // 1. bind Vertex Array Object
+    glBindVertexArray(QUANTIZER::qVAO);
+    // 2. copy our vertices array in a buffer for OpenGL to use
+    glBindBuffer(GL_ARRAY_BUFFER, QUANTIZER::qVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, QUANTIZER::qEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW); 
+    // 3. then set our vertex attributes pointers
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);  
+
+    QUANTIZER::qProgramID = GLWRAP::LoadShaders("resources\\shaders\\quantizer.vert", "resources\\shaders\\quantizer.frag");
+
+}
+
+void QUANTIZER::closeQuantizer() {
+    if (QUANTIZER::qProgramID == NULL) return;
+    glDeleteBuffers(1, &QUANTIZER::qVBO);
+    glDeleteBuffers(1, &QUANTIZER::qEBO);
+    glDeleteVertexArrays(1, &QUANTIZER::qVAO);  
+
+    glDeleteProgram(QUANTIZER::qProgramID);
+
+    QUANTIZER::qEBO = NULL;
+    QUANTIZER::qVAO = NULL;
+    QUANTIZER::qVBO = NULL;
+    QUANTIZER::qProgramID = NULL;
 }
