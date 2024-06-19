@@ -35,7 +35,7 @@ namespace GLWRAP
             return false;
         }
         glfwMakeContextCurrent(*window);
-        glfwSwapInterval(1); // Enable vsync
+        //glfwSwapInterval(1); // Enable vsync
 
         // glad: load all OpenGL function pointers
         // ---------------------------------------
@@ -177,6 +177,5 @@ namespace GLWRAP
 
         return ProgramID;
     }
-
 
 } // namespace GLWRAP

@@ -5,7 +5,7 @@
 
 void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::vector<float *> *colors) {
     
-    if (QUANTIZER::qProgramID == NULL) return;
+    if (QUANTIZER::qProgramID == 0) return;
 
     // turn our colors into a texture
     unsigned char colData[colors->size() * 3];
@@ -60,7 +60,7 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
 
     // Always check that our framebuffer is ok
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        *quantizedTex = NULL;
+        *quantizedTex = 0;
         return;
     }
 
@@ -99,7 +99,7 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, int numColors, std::v
 }
 
 void QUANTIZER::setupQuantizer() {
-    if (QUANTIZER::qProgramID != NULL) return; 
+    if (QUANTIZER::qProgramID != 0) return; 
 
     static float vertices[] = {
         1.0f,  1.0f, 0.0f,  //top right
@@ -134,15 +134,15 @@ void QUANTIZER::setupQuantizer() {
 }
 
 void QUANTIZER::closeQuantizer() {
-    if (QUANTIZER::qProgramID == NULL) return;
+    if (QUANTIZER::qProgramID == 0) return;
     glDeleteBuffers(1, &QUANTIZER::qVBO);
     glDeleteBuffers(1, &QUANTIZER::qEBO);
     glDeleteVertexArrays(1, &QUANTIZER::qVAO);  
 
     glDeleteProgram(QUANTIZER::qProgramID);
 
-    QUANTIZER::qEBO = NULL;
-    QUANTIZER::qVAO = NULL;
-    QUANTIZER::qVBO = NULL;
-    QUANTIZER::qProgramID = NULL;
+    QUANTIZER::qEBO = 0;
+    QUANTIZER::qVAO = 0;
+    QUANTIZER::qVBO = 0;
+    QUANTIZER::qProgramID = 0;
 }

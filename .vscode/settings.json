@@ -58,7 +58,11 @@
     "ratio": "cpp",
     "iomanip": "cpp",
     "sstream": "cpp",
-    "format": "cpp"
+    "format": "cpp",
+    "charconv": "cpp",
+    "chrono": "cpp",
+    "span": "cpp",
+    "variant": "cpp"
   },
   "cmake.configureOnOpen": false
 }

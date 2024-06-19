@@ -34,6 +34,8 @@ int main()
 		glfwSwapBuffers(window);
 	});
 
+
+	gui.limitFPS(60);
 	// render loop
 	// -----------
 	while (!glfwWindowShouldClose(win))
@@ -41,9 +43,6 @@ int main()
 		// input
 		// -----
 		processInput(win);
-
-		glClearColor(0.3, 0.4, 0.4, 1.0);
-		glClear(GL_COLOR_BUFFER_BIT);
 
 		gui.render(win);		
 

@@ -4,6 +4,7 @@
 #include "imgui/imgui.h"
 #include "imfilebrowser/imfilebrowser.h"
 #include "opengl.h"
+#include "timer.h"
 
 #include <vector>
 
@@ -25,6 +26,12 @@ private:
     GLuint crntTexID;
     GLuint crntQuantID;
 
+    /**
+     * variables for limitFPS
+     */
+    Timer timer;
+    int FPSLimit;
+
     void imguiImageCentred(GLuint Tex, ImVec2 boundingBox);
 
 public:
@@ -41,6 +48,11 @@ public:
 
     bool setQuantizationColor(int index, float* color);
     void setCrntTexId(GLuint texID);
+
+    /**
+     * caps fps at value, 0 or less for no limit, no guaruntee for high fps
+     */
+    void limitFPS(int value);
 
 };
 
