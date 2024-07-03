@@ -18,6 +18,6 @@ void main()
             FragColor = texture(colors, vec2(i/numColors, 0.5));
         }
     }
-
+    
     //FragColor = texture(colors, texPos);
 } 

@@ -15,6 +15,7 @@ private:
     bool loading;
     bool saving;
     bool quantized;
+    bool showPBNSegments;
     ImGuiIO io;
     ImGui::FileBrowser fileDialog;
 

@@ -19,8 +19,8 @@ namespace GLWRAP
         // glfw: initialize and configure
         // ------------------------------
         glfwInit();
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifdef __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); //uncomment this statement to fix compilation on OS X
@@ -45,6 +45,11 @@ namespace GLWRAP
             return false;
         }
 
+        std::cout << "OpenGL vendor: " << glGetString(GL_VENDOR) << std::endl;
+        std::cout << "OpenGL renderer: " << glGetString(GL_RENDERER) << std::endl;
+        std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
+
+
         return true;
     }
 
@@ -55,7 +60,7 @@ namespace GLWRAP
         unsigned char* data = stbi_load(filePath, &x, &y, &n, 4);
         
         if (data == NULL) {
-            *tex = NULL;
+            *tex = 0;
             return;
         }
 
@@ -70,7 +75,7 @@ namespace GLWRAP
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-        glBindTexture(GL_TEXTURE_2D, NULL);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         stbi_image_free(data);
     }

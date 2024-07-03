@@ -47,6 +47,7 @@ GUI::GUI(GLFWwindow *window)
     this->loading = false;
     this->saving = false;
     this->quantized = false;
+    this->showPBNSegments = false;
     this->fileDialog = ImGui::FileBrowser();
 
     this->numColors = 16;
@@ -124,7 +125,10 @@ void GUI::render(GLFWwindow* window) {
 
         ImGui::Separator();
 
-        ImGui::Checkbox("Quantize", &this->quantized);
+        if (this->crntTexID != 0) {
+            ImGui::Checkbox("Quantize", &this->quantized);
+            ImGui::Checkbox("Show PBN Segments", &this->showPBNSegments);
+        }
         
         this->mainMenuHeight = ImGui::GetWindowHeight();
 
@@ -133,29 +137,47 @@ void GUI::render(GLFWwindow* window) {
 
     if (this->quantized) {
         GLuint temp;
-        QUANTIZER::quantize(this->crntTexID, &temp, this->numColors, &this->quantizationColors);
+        QUANTIZER::quantize(this->crntTexID, &temp, &this->quantizationColors);
         if (temp != 0) {
             this->crntQuantID = temp;
         }
-        
-        ImGui::SetNextWindowPos(ImVec2(0, this->mainMenuHeight));
-        ImGui::SetNextWindowSize(ImVec2(this->quantizationMenuWidth, this->io.DisplaySize.y - this->mainMenuHeight));
-        if (ImGui::Begin("Quantization Menu", nullptr, ImGuiWindowFlags_NoCollapse |
-                                                        ImGuiWindowFlags_NoResize)) {
-            ImGui::Text(std::format("#Colors: {}", this->numColors).c_str());
-            ImGui::Separator();
-            
-            for (int i = 0; i < this->quantizationColors.size(); i++) {
-                ImGui::ColorEdit4(std::format("Color {}", i).c_str(), this->quantizationColors[i]);
-            }
+    }
 
-            ImGui::End();
+    ImGui::SetNextWindowPos(ImVec2(0, this->mainMenuHeight));
+    ImGui::SetNextWindowSize(ImVec2(this->quantizationMenuWidth, this->io.DisplaySize.y - this->mainMenuHeight));
+    if (ImGui::Begin("Quantization Menu", nullptr, ImGuiWindowFlags_NoCollapse |
+                                                    ImGuiWindowFlags_NoResize)) {
+        ImGui::Text(std::format("#Colors: {}", this->numColors).c_str());
+
+        if (ImGui::SliderInt("temp", &this->numColors, 1, 32)) {
+            if (this->quantizationColors.size() != this->numColors) {
+                while (this->quantizationColors.size() > this->numColors) {
+                    this->quantizationColors.pop_back();
+                }
+                while (this->quantizationColors.size() < this->numColors) {
+                    this->quantizationColors.push_back(new float[4]);
+                }
+            }
         }
+
+        if (ImGui::Button("Randomize Color Pallette")) {
+            QUANTIZER::calcBestColors(this->crntTexID, &this->quantizationColors, true);// arbitrary depth should be enough
+        }
+        if (ImGui::Button("'Guess' Best Colors")) {
+            QUANTIZER::calcBestColors(this->crntTexID, &this->quantizationColors, false);// arbitrary depth should be enough
+        }
+        ImGui::Separator();
+        
+        for (int i = 0; i < this->quantizationColors.size(); i++) {
+            ImGui::ColorEdit4(std::format("Color {}", i).c_str(), this->quantizationColors[i]);
+        }
+
+        ImGui::End();
     }
 
 
-    ImGui::SetNextWindowPos(ImVec2(this->quantized ? this->quantizationMenuWidth : 0, this->mainMenuHeight));
-    ImGui::SetNextWindowSize(ImVec2(this->io.DisplaySize.x - (this->quantized ? this->quantizationMenuWidth : 0),
+    ImGui::SetNextWindowPos(ImVec2(this->quantizationMenuWidth, this->mainMenuHeight));
+    ImGui::SetNextWindowSize(ImVec2(this->io.DisplaySize.x - this->quantizationMenuWidth,
                                     this->io.DisplaySize.y - this->mainMenuHeight));
     if (ImGui::Begin("Image", nullptr, ImGuiWindowFlags_NoResize |
                                         ImGuiWindowFlags_NoScrollbar |
@@ -183,7 +205,7 @@ void GUI::render(GLFWwindow* window) {
                 GLWRAP::loadTex(fileDialog.GetSelected().generic_string().c_str(), &temp);
                 if (temp != 0)  {
                     this->crntTexID = temp;
-                    QUANTIZER::quantize(this->crntTexID, &temp, this->numColors, &this->quantizationColors);
+                    QUANTIZER::quantize(this->crntTexID, &temp, &this->quantizationColors);
                     if (temp != 0) {
                         this->crntQuantID = temp;
                     }

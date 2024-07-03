@@ -35,7 +35,7 @@ int main()
 	});
 
 
-	gui.limitFPS(60);
+	//gui.limitFPS(60);
 	// render loop
 	// -----------
 	while (!glfwWindowShouldClose(win))
