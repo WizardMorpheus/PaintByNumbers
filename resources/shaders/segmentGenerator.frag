@@ -21,8 +21,7 @@ void main()
         }
     }
 
-    diff /= 8;
-    diff = 1-diff;
-    FragColor = vec4(diff, diff, diff, 1.0);
+    diff /= 6;
+    FragColor = vec4(1.0-diff, 1.0-diff, 1.0-diff, diff);
 
 }

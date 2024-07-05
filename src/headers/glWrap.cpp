@@ -3,11 +3,14 @@
 #include "opengl.h"
 #include "constants.h"
 #include "stbImage/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stbImage/stb_image_write.h"
 
 #include <iostream>
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <string>
 namespace GLWRAP
 {
     
@@ -80,9 +83,31 @@ namespace GLWRAP
         stbi_image_free(data);
     }
 
+    void saveTex(const char *filePath, const char* fileType, GLuint *tex) {
+        int dims[2];
+        queryTex(*tex, dims, GL_TEXTURE_2D);
+        unsigned char* data = new unsigned char[dims[0]*dims[1]*3];
+
+        glBindTexture(GL_TEXTURE_2D, *tex);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        GLenum err = glGetError();
+
+        if (std::string(fileType) == ".png") {
+            stbi_write_png(filePath, dims[0], dims[1], 3, data, sizeof(char) * 3 * dims[0]);
+        } else if (std::string(fileType) == ".bmp") {
+            stbi_write_bmp(filePath, dims[0], dims[1], 3, data);
+        } else if (std::string(fileType) == ".tga") {
+            stbi_write_tga(filePath, dims[0], dims[1], 3, data);
+        } else if (std::string(fileType) == ".jpg") {
+            stbi_write_jpg(filePath, dims[0], dims[1], 3, data, 100);
+        }
+        
+    }
+
     void queryTex(GLuint tex, int *dims, GLenum target) {
         glBindTexture(target, tex);
         glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, dims);
+
         if (target == GL_TEXTURE_2D || target == GL_TEXTURE_3D)
             glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, dims + 1);
         if (target == GL_TEXTURE_3D)

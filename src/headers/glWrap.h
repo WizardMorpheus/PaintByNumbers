@@ -22,6 +22,11 @@ namespace GLWRAP
     void loadTex(const char* filePath, GLuint* Tex);
 
     /**
+     * save a texture to the given filepath as a png image
+     */
+    void saveTex(const char* filePath, const char* fileType, GLuint* tex);
+
+    /**
      * retrieves the width and height of a texture Tex and stores them in *dims, Tex is of type target
      */
     void queryTex(GLuint tex, int* dims, GLenum target);

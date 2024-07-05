@@ -15,17 +15,21 @@ private:
     bool loading;
     bool saving;
     bool quantized;
-    bool showPBNSegments;
+    bool showSegments;
+    bool newMethod;
     ImGuiIO io;
-    ImGui::FileBrowser fileDialog;
+    ImGui::FileBrowser loadDialog;
+    ImGui::FileBrowser saveDialog;
 
     int numColors;
     int mainMenuHeight;
     const int quantizationMenuWidth = 400;
-    std::vector<float*> quantizationColors;
+    float colorData[16*4];
 
     GLuint crntTexID;
     GLuint crntQuantID;
+    GLuint crntSegmentID;
+    GLuint crntOverlayID;
 
     /**
      * variables for limitFPS
@@ -45,9 +49,9 @@ public:
     void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 
     bool getQuantized();
-    std::vector<float*> getQuantizationColors();
+    float* getColorData();
 
-    bool setQuantizationColor(int index, float* color);
+    void setColor(int index, float* color);
     void setCrntTexId(GLuint texID);
 
     /**

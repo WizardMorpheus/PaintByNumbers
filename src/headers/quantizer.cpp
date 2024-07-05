@@ -7,30 +7,9 @@
 #include <random>
 #include <chrono>
 
-void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, std::vector<float *> *colors) {
+void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int numColors, bool newMethod) {
     
     if (QUANTIZER::qProgramID == 0) return;
-
-    // turn our colors into a texture
-
-    unsigned char colData[(colors->size() + colors->size()%2) * 3];
-
-
-    for (int i = 0; i < colors->size(); i++){
-        colData[i*3] = (char)(colors->at(i)[0] * 255);
-        colData[i*3 + 1] = (char)(colors->at(i)[1] * 255);
-        colData[i*3 + 2] = (char)(colors->at(i)[2] * 255);
-    }
-    
-    GLuint colorTex;
-    glGenTextures(1, &colorTex);
-    glBindTexture(GL_TEXTURE_2D, colorTex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (colors->size() + colors->size()%2)/2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, colData);
-    
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
 
     // setup to render
     
@@ -84,12 +63,83 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, std::vector<float *> 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, colorTex);
-
     glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "texToQuantize"), 0);
-    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "colors"), 1);
-    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "numColors"), colors->size());
+    glUniform4fv(glGetUniformLocation(QUANTIZER::qProgramID, "colors"), numColors, colorData);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "numColors"), numColors);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "newMethod"), (int)newMethod);
+    
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &Framebuffer);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+}
+
+void QUANTIZER::genSegments(GLuint quantizedTex, GLuint *segmentTex) {
+    
+    if (QUANTIZER::qProgramID == 0) return;
+
+    // setup to render
+    
+
+    int dims[2];
+    GLWRAP::queryTex(quantizedTex, dims, GL_TEXTURE_2D);
+
+    // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
+    GLuint Framebuffer = 0;
+    glGenFramebuffers(1, &Framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
+
+    // The texture we're going to render to
+    glGenTextures(1, segmentTex);
+
+    // "Bind" the newly created texture : all future texture functions will modify this texture
+    glBindTexture(GL_TEXTURE_2D, *segmentTex);
+
+
+    // Give an empty image to OpenGL ( the last "0" )
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, dims[0], dims[1], 0,GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+    // Poor filtering. Needed !
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    // Set "renderedTexture" as our colour attachement #0
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *segmentTex, 0);
+
+    // Set the list of draw buffers.
+    GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+
+
+    // Always check that our framebuffer is ok
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        *segmentTex = 0;
+        return;
+    }
+
+
+    // Render to our framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
+    glViewport(0,0,dims[0],dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
+
+
+    glBindVertexArray(QUANTIZER::qVAO);
+
+    glUseProgram(QUANTIZER::qSegmentProgID);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, quantizedTex);
+
+    glUniform1i(glGetUniformLocation(QUANTIZER::qSegmentProgID, "texToSegment"), 0);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qSegmentProgID, "texWidth"), dims[0]);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qSegmentProgID, "texHeight"), dims[1]);
     
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
 
@@ -101,7 +151,81 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, std::vector<float *> 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    glDeleteTextures(1, &colorTex);
+
+}
+
+void QUANTIZER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex) {
+    
+    if (QUANTIZER::qProgramID == 0) return;
+
+    // setup to render
+    
+
+    int dims[2];
+    GLWRAP::queryTex(tex1, dims, GL_TEXTURE_2D);
+
+    // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
+    GLuint Framebuffer = 0;
+    glGenFramebuffers(1, &Framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
+
+    // The texture we're going to render to
+    glGenTextures(1, overlayTex);
+
+    // "Bind" the newly created texture : all future texture functions will modify this texture
+    glBindTexture(GL_TEXTURE_2D, *overlayTex);
+
+
+    // Give an empty image to OpenGL ( the last "0" )
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+    // Poor filtering. Needed !
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    // Set "renderedTexture" as our colour attachement #0
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *overlayTex, 0);
+
+    // Set the list of draw buffers.
+    GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+
+
+    // Always check that our framebuffer is ok
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        *overlayTex = 0;
+        return;
+    }
+
+
+    // Render to our framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
+    glViewport(0,0,dims[0],dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
+
+
+    glBindVertexArray(QUANTIZER::qVAO);
+
+    glUseProgram(QUANTIZER::qOverlayProg);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex1);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, tex2);
+
+    glUniform1i(glGetUniformLocation(QUANTIZER::qOverlayProg, "tex1"), 0);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qOverlayProg, "tex2"), 1);
+    
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &Framebuffer);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 
 }
 
@@ -137,7 +261,8 @@ void QUANTIZER::setupQuantizer() {
     glEnableVertexAttribArray(0);  
 
     QUANTIZER::qProgramID = GLWRAP::LoadShaders("resources\\shaders\\quantizer.vert", "resources\\shaders\\quantizer.frag");
-    QUANTIZER::qColorProgID = GLWRAP::LoadShaders("resources\\shaders\\kmean.vert", "resources\\shaders\\kmean.frag");
+    QUANTIZER::qSegmentProgID = GLWRAP::LoadShaders("resources\\shaders\\segmentGenerator.vert", "resources\\shaders\\segmentGenerator.frag");
+    QUANTIZER::qOverlayProg = GLWRAP::LoadShaders("resources\\shaders\\splice.vert", "resources\\shaders\\splice.frag");
 }
 
 void QUANTIZER::closeQuantizer() {
@@ -147,16 +272,16 @@ void QUANTIZER::closeQuantizer() {
     glDeleteVertexArrays(1, &QUANTIZER::qVAO);  
 
     glDeleteProgram(QUANTIZER::qProgramID);
-    glDeleteProgram(QUANTIZER::qColorProgID);
+    glDeleteProgram(QUANTIZER::qSegmentProgID);
 
     QUANTIZER::qEBO = 0;
     QUANTIZER::qVAO = 0;
     QUANTIZER::qVBO = 0; 
     QUANTIZER::qProgramID = 0;
-    QUANTIZER::qColorProgID = 0;
+    QUANTIZER::qSegmentProgID = 0;
 }
 
-void QUANTIZER::calcBestColors(GLuint tex, std::vector<float *> *colors, bool random) {
+void QUANTIZER::calcBestColors(GLuint tex, float* colorData, int numColors, bool random) {
 
     int texDims[2];
     GLWRAP::queryTex(tex, texDims, GL_TEXTURE_2D);
@@ -167,26 +292,26 @@ void QUANTIZER::calcBestColors(GLuint tex, std::vector<float *> *colors, bool ra
 
     std::srand(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
 
-    for (int i = 0; i < colors->size(); i++) {
+    for (int i = 0; i < numColors; i++) {
         if (random) {
-            colors->at(i)[0] = float(std::rand()%255) / 255;
-            colors->at(i)[1] = float(std::rand()%255) / 255;
-            colors->at(i)[2] = float(std::rand()%255) / 255;
-            colors->at(i)[3] = 1.0;
+            colorData[i*4 + 0] = float(std::rand()%255) / 255;
+            colorData[i*4 + 1] = float(std::rand()%255) / 255;
+            colorData[i*4 + 2] = float(std::rand()%255) / 255;
+            colorData[i*4 + 3] = 1.0;
         } else {
             int x = std::rand()%texDims[0];
             int y = std::rand()%texDims[1];
 
-            colors->at(0)[0] = float(texData[(x + y*texDims[0]) * 4 + 0]) / 255;
-            colors->at(1)[1] = float(texData[(x + y*texDims[0]) * 4 + 1]) / 255;
-            colors->at(2)[2] = float(texData[(x + y*texDims[0]) * 4 + 2]) / 255;
-            colors->at(3)[3] = float(texData[(x + y*texDims[0]) * 4 + 3]) / 255;
+            colorData[i*4 + 0] = float(texData[(x + y*texDims[0]) * 4 + 0]) / 255;
+            colorData[i*4 + 1] = float(texData[(x + y*texDims[0]) * 4 + 1]) / 255;
+            colorData[i*4 + 2] = float(texData[(x + y*texDims[0]) * 4 + 2]) / 255;
+            colorData[i*4 + 3] = float(texData[(x + y*texDims[0]) * 4 + 3]) / 255;
         }
     }
 
 
     std::vector<float*> tempColors;
-    for (int i = 0; i < colors->size(); i++) {
+    for (int i = 0; i < numColors; i++) {
         tempColors.push_back(new float[4]);
         tempColors.at(i)[0] = 0.0;
         tempColors.at(i)[1] = 0.0;
@@ -210,7 +335,7 @@ void QUANTIZER::calcBestColors(GLuint tex, std::vector<float *> *colors, bool ra
             crntTexVal[3] = float(texData[(x + y*texDims[0]) * 4 + 3]) / 255;
 
             for (int i = 1; i < tempColors.size(); i++) {
-                if (getDistance4(colors->at(i), crntTexVal) < getDistance4(colors->at(nearestColor), crntTexVal)) 
+                if (getDistance4(&colorData[i*4], crntTexVal) < getDistance4(&colorData[nearestColor*4], crntTexVal)) 
                     nearestColor = i;
             }
 
@@ -230,152 +355,16 @@ void QUANTIZER::calcBestColors(GLuint tex, std::vector<float *> *colors, bool ra
             tempColors[i][3] = tempColors[i][3] / numValsInColor[i];
         }
 
-        colors->at(i)[0] = tempColors[i][0];
-        colors->at(i)[1] = tempColors[i][1];
-        colors->at(i)[2] = tempColors[i][2];
-        colors->at(i)[3] = tempColors[i][3];
+        colorData[i*4 + 0] = tempColors[i][0];
+        colorData[i*4 + 1] = tempColors[i][1];
+        colorData[i*4 + 2] = tempColors[i][2];
+        colorData[i*4 + 3] = tempColors[i][3];
 
         tempColors[i][0] = 0;
         tempColors[i][1] = 0;
         tempColors[i][2] = 0;
         tempColors[i][3] = 0;
     }
-
-    
-
-
-    // if (QUANTIZER::qColorProgID == 0) return;
-
-    // // turn our colors into a texture
-    // unsigned char colData[(colors->size() + colors->size()%2) * 3];
-
-    // // if (colors->size()%2 != 0) {
-    // //     colData = new unsigned char[(colors->size() + 1) * 3];
-    // // } else {
-    // //     colData = new unsigned char[colors->size() * 3];
-    // // }
-
-    // for (int i = 0; i < colors->size(); i++){
-    //     colData[i*3] = (char)(colors->at(i)[0] * 255);
-    //     colData[i*3 + 1] = (char)(colors->at(i)[1] * 255);
-    //     colData[i*3 + 2] = (char)(colors->at(i)[2] * 255);
-    // }
-
-    
-    // GLuint colorTex;
-    // glGenTextures(1, &colorTex);
-    // glBindTexture(GL_TEXTURE_2D, colorTex);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (colors->size() + colors->size()%2)/2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, colData);
-    
-    // // Poor filtering. Needed !
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    // // The texture we're going to render to
-    // GLuint newColorTex;
-    // glGenTextures(1, &newColorTex);
-
-    // // "Bind" the newly created texture : all future texture functions will modify this texture
-    // glBindTexture(GL_TEXTURE_2D, newColorTex);
-
-    // // Give an empty image to OpenGL ( the last "0" )
-    // glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, (colors->size() + colors->size()%2)/2, 2, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
-
-    // // Poor filtering. Needed !
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-
-    // // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
-    // GLuint Framebuffer = 0;
-    // glGenFramebuffers(1, &Framebuffer);
-    // glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
-
-    // // Set "renderedTexture" as our colour attachement #0
-    // glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, newColorTex, 0);
-
-    // // Set the list of draw buffers.
-    // GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
-    // glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
-
-    // // Always check that our framebuffer is ok
-    // if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-    //     newColorTex = 0;
-    //     return;
-    // }
-
-
-    // // Render to our framebuffer
-    // glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
-    // glViewport(0,0, (colors->size() + colors->size()%2) / 2, 2); // Render on the whole framebuffer, complete from the lower left corner to the upper right
-
-
-    // glBindVertexArray(QUANTIZER::qVAO);
-
-    // glUseProgram(QUANTIZER::qColorProgID);
-
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, tex);
-
-    // glActiveTexture(GL_TEXTURE1);
-    // glBindTexture(GL_TEXTURE_2D, colorTex);
-
-    // glUniform1i(glGetUniformLocation(QUANTIZER::qColorProgID, "texToQuantize"), 0);
-    // glUniform1i(glGetUniformLocation(QUANTIZER::qColorProgID, "colors"), 1);
-    // glUniform1i(glGetUniformLocation(QUANTIZER::qColorProgID, "numColors"), colors->size());
-    
-    // int texDims[2];
-    // GLWRAP::queryTex(tex, texDims, GL_TEXTURE_2D);
-    // glUniform1i(glGetUniformLocation(QUANTIZER::qColorProgID, "texWidth"), texDims[0]);
-    // glUniform1i(glGetUniformLocation(QUANTIZER::qColorProgID, "texHeight"), texDims[1]);
-
-    // for (int i = 0; i < depth; i++) {
-    //     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
-
-    //     // copy new colors to old color texture 
-    //     glBindTexture(GL_TEXTURE_2D, newColorTex);
-    //     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, colData);
-
-    //     GLenum err = glGetError();
-    //     if (err != GL_NO_ERROR) {
-    //         GLint binding;
-    //         glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &binding);
-    //         std::cout << err << ": binding" << std::endl;
-    //     }
-
-    //     glBindTexture(GL_TEXTURE_2D, colorTex);
-    //     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (colors->size() + colors->size()%2)/2, 2, 0, GL_RGB, GL_UNSIGNED_BYTE, colData);
-        
-    //     err = glGetError();
-    //     if (err != GL_NO_ERROR) {
-    //         std::cout << err << std::endl;
-    //     }
-
-        
-    // }
-
-
-    // glBindTexture(GL_TEXTURE_2D, 0);
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, 0);
-
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // glDeleteFramebuffers(1, &Framebuffer);
-
-    // glBindVertexArray(0);
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // glDeleteTextures(1, &colorTex);
-    // glDeleteTextures(1, &newColorTex);
-
-    // for (int i = 0; i < colors->size(); i++) {
-    //     colors->at(i)[0] = float(colData[i*3 + 0]) / 255;
-    //     colors->at(i)[1] = float(colData[i*3 + 1]) / 255;
-    //     colors->at(i)[2] = float(colData[i*3 + 2]) / 255;
-    //     colors->at(i)[3] = 1.0f;
-    // }
-
 
 }
 

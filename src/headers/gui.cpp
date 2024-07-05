@@ -18,7 +18,8 @@
 #include <vector>
 #include <string>
 
-const std::vector<std::string> allowedFileTypes = { ".jpeg", ".jpg", ".png" , ".tga", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".pnm"};
+const std::vector<std::string> loadFileTypes = { ".jpeg", ".jpg", ".png" , ".tga", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".pnm"};
+const std::vector<std::string> saveFileTypes = { ".jpg", ".png" , ".tga", ".bmp"};
 
 void GUI::imguiImageCentred(GLuint Tex, ImVec2 boundingBox) {
     ImVec2 adjustedSize;
@@ -41,24 +42,24 @@ void GUI::imguiImageCentred(GLuint Tex, ImVec2 boundingBox) {
     ImGui::Image((ImTextureID)Tex, adjustedSize);
 }
 
-GUI::GUI(GLFWwindow *window)
-{
+
+GUI::GUI(GLFWwindow *window) {
     this->fileMenuOpen = false;
     this->loading = false;
     this->saving = false;
     this->quantized = false;
-    this->showPBNSegments = false;
-    this->fileDialog = ImGui::FileBrowser();
+    this->showSegments = false;
+    this->newMethod = false;
+    this->loadDialog = ImGui::FileBrowser();
+    this->saveDialog = ImGui::FileBrowser(ImGuiFileBrowserFlags_EnterNewFilename);
 
     this->numColors = 16;
     this->mainMenuHeight = 0;
-    this->quantizationColors = std::vector<float*>();
-    for (int i = 0; i < numColors; i++) {
-        quantizationColors.push_back(new float[4]);
-    }
+
 
     this->crntTexID = 0;
     this->crntQuantID = 0;
+    this->crntSegmentID = 0;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -108,16 +109,16 @@ void GUI::render(GLFWwindow* window) {
         if (ImGui::BeginMenu("file", &this->fileMenuOpen)) {
 
             if (ImGui::MenuItem("Load")) {
-                this->fileDialog.SetTitle("Load");
-                this->fileDialog.SetTypeFilters(allowedFileTypes) ;
-                this->fileDialog.Open();
+                this->loadDialog.SetTitle("Load");
+                this->loadDialog.SetTypeFilters(loadFileTypes) ;
+                this->loadDialog.Open();
                 this->loading = true;
             }
 
             if (ImGui::MenuItem("Save")) {
-                this->fileDialog.SetTitle("Save");
-                this->fileDialog.SetTypeFilters(allowedFileTypes) ;
-                this->fileDialog.Open();
+                this->saveDialog.SetTitle("Save");
+                this->saveDialog.SetTypeFilters(saveFileTypes);
+                this->saveDialog.Open();
                 this->saving = true;
             }
             ImGui::EndMenu();
@@ -127,7 +128,8 @@ void GUI::render(GLFWwindow* window) {
 
         if (this->crntTexID != 0) {
             ImGui::Checkbox("Quantize", &this->quantized);
-            ImGui::Checkbox("Show PBN Segments", &this->showPBNSegments);
+            ImGui::Checkbox("Show PBN Segments", &this->showSegments);
+            ImGui::Checkbox("new method", &this->newMethod);
         }
         
         this->mainMenuHeight = ImGui::GetWindowHeight();
@@ -135,13 +137,24 @@ void GUI::render(GLFWwindow* window) {
         ImGui::EndMainMenuBar();
     }
 
+
     if (this->quantized) {
         GLuint temp;
-        QUANTIZER::quantize(this->crntTexID, &temp, &this->quantizationColors);
+        QUANTIZER::quantize(this->crntTexID, &temp, this->colorData, this->numColors, this->newMethod);
         if (temp != 0) {
+            glDeleteTextures(1, &this->crntQuantID);
             this->crntQuantID = temp;
         }
     }
+    if (this->showSegments) {
+        GLuint temp;
+        QUANTIZER::genSegments(this->crntQuantID, &temp);
+        if (temp != 0) {
+            glDeleteTextures(1, &this->crntSegmentID);
+            this->crntSegmentID = temp;
+        }
+    }
+
 
     ImGui::SetNextWindowPos(ImVec2(0, this->mainMenuHeight));
     ImGui::SetNextWindowSize(ImVec2(this->quantizationMenuWidth, this->io.DisplaySize.y - this->mainMenuHeight));
@@ -149,27 +162,19 @@ void GUI::render(GLFWwindow* window) {
                                                     ImGuiWindowFlags_NoResize)) {
         ImGui::Text(std::format("#Colors: {}", this->numColors).c_str());
 
-        if (ImGui::SliderInt("temp", &this->numColors, 1, 32)) {
-            if (this->quantizationColors.size() != this->numColors) {
-                while (this->quantizationColors.size() > this->numColors) {
-                    this->quantizationColors.pop_back();
-                }
-                while (this->quantizationColors.size() < this->numColors) {
-                    this->quantizationColors.push_back(new float[4]);
-                }
-            }
-        }
+        ImGui::SliderInt("temp", &this->numColors, 1, 16);
 
         if (ImGui::Button("Randomize Color Pallette")) {
-            QUANTIZER::calcBestColors(this->crntTexID, &this->quantizationColors, true);// arbitrary depth should be enough
+            QUANTIZER::calcBestColors(this->crntTexID, this->colorData, this->numColors, true);// arbitrary depth should be enough
         }
         if (ImGui::Button("'Guess' Best Colors")) {
-            QUANTIZER::calcBestColors(this->crntTexID, &this->quantizationColors, false);// arbitrary depth should be enough
+            QUANTIZER::calcBestColors(this->crntTexID, this->colorData, this->numColors, false);// arbitrary depth should be enough
         }
         ImGui::Separator();
         
-        for (int i = 0; i < this->quantizationColors.size(); i++) {
-            ImGui::ColorEdit4(std::format("Color {}", i).c_str(), this->quantizationColors[i]);
+        for (int i = 0; i < this->numColors; i++) {
+            if (ImGui::ColorEdit4(std::format("Color {}", i).c_str(), &this->colorData[i*4])) {
+            }
         }
 
         ImGui::End();
@@ -183,44 +188,73 @@ void GUI::render(GLFWwindow* window) {
                                         ImGuiWindowFlags_NoScrollbar |
                                         ImGuiWindowFlags_NoScrollWithMouse |
                                         ImGuiWindowFlags_NoCollapse)) {
-        //helloo
+
+        ImVec2 cursorPos = ImGui::GetCursorPos();
+
         if (this->quantized) {
-            if (this->crntQuantID != 0)
-                this->imguiImageCentred(this->crntQuantID, ImGui::GetWindowSize());
+            if (this->crntQuantID != 0) {
+                if (this->crntOverlayID != this->crntQuantID && this->crntOverlayID != this->crntTexID)
+                    glDeleteTextures(1, &this->crntOverlayID);
+                this->crntOverlayID = this->crntQuantID;
+                if (this->showSegments) {
+                    QUANTIZER::overlayTextures(this->crntQuantID, this->crntSegmentID, &this->crntOverlayID);
+                    if (this->crntOverlayID == 0) this->crntOverlayID = this->crntQuantID;
+                }
+
+                this->imguiImageCentred(this->crntOverlayID, ImGui::GetWindowSize());
+            }
         } else {
-            if (this->crntTexID != 0)
-                this->imguiImageCentred(this->crntTexID, ImGui::GetWindowSize());
+            if (this->crntTexID != 0) {
+                if (this->crntOverlayID != this->crntQuantID && this->crntOverlayID != this->crntTexID)
+                    glDeleteTextures(1, &this->crntOverlayID);
+                this->crntOverlayID = this->crntTexID;
+                if (this->showSegments) {
+                    QUANTIZER::overlayTextures(this->crntTexID, this->crntSegmentID, &this->crntOverlayID);
+                    if (this->crntOverlayID == 0) this->crntOverlayID = this->crntTexID;
+                }
+
+                this->imguiImageCentred(this->crntOverlayID, ImGui::GetWindowSize());
+            }
         }
+
         ImGui::End();
     }
 
 
-    if (this->loading || this->saving) {
-        this->fileDialog.Display();
-        if (this->fileDialog.HasSelected()) {
-            // load or save
-
-            if (this->loading) {
-                GLuint temp;
-                GLWRAP::loadTex(fileDialog.GetSelected().generic_string().c_str(), &temp);
-                if (temp != 0)  {
-                    this->crntTexID = temp;
-                    QUANTIZER::quantize(this->crntTexID, &temp, &this->quantizationColors);
-                    if (temp != 0) {
-                        this->crntQuantID = temp;
-                    }
+    if (this->loading) {
+        this->loadDialog.Display();
+        if (this->loadDialog.HasSelected()) {
+            // load
+            GLuint temp;
+            GLWRAP::loadTex(this->loadDialog.GetSelected().generic_string().c_str(), &temp);
+            if (temp != 0)  {
+                this->crntTexID = temp;
+                QUANTIZER::quantize(this->crntTexID, &temp, this->colorData, this->numColors, this->newMethod);
+                if (temp != 0) {
+                    this->crntQuantID = temp;
                 }
             }
-            if (this->saving) {
 
-            }
-
-            this->fileDialog.ClearSelected();
-            this->fileDialog.Close();
+            this->loadDialog.ClearSelected();
+            this->loadDialog.Close();
             this->loading = false;
+        }
+    }
+
+    if (this->saving) {
+        this->saveDialog.Display();
+        if (this->saveDialog.HasSelected()) {
+            // save
+            GLWRAP::saveTex(this->saveDialog.GetSelected().generic_string().c_str(),
+                            this->saveDialog.GetSelected().extension().generic_string().c_str(),
+                             &this->crntSegmentID);
+
+            this->saveDialog.ClearSelected();
+            this->saveDialog.Close();
             this->saving = false;
         }
     }
+
 
     // Rendering
     ImGui::Render();
@@ -246,16 +280,15 @@ bool GUI::getQuantized() {
     return this->quantized;
 }
 
-std::vector<float *> GUI::getQuantizationColors() {
-    return std::vector<float *>(this->quantizationColors);
+float* GUI::getColorData() {
+    return this->colorData;
 }
 
-bool GUI::setQuantizationColor(int index, float *color) {
-    if (index < this->quantizationColors.size()) {
-        this->quantizationColors.at(index) = color;
-        return true;
-    }
-    return false;
+void GUI::setColor(int index, float *color) {
+    this->colorData[index*4 + 0] = color[0];
+    this->colorData[index*4 + 1] = color[1];
+    this->colorData[index*4 + 2] = color[2];
+    this->colorData[index*4 + 3] = color[3];
 }
 
 void GUI::setCrntTexId(GLuint texID) {

@@ -4,20 +4,22 @@ layout(location = 0) out vec4 FragColor;
 in vec2 texPos;
 
 uniform sampler2D texToQuantize;
-uniform sampler2D colors;
+uniform vec4 colors[16];
 uniform int numColors;
+uniform int newMethod;
+
 
 void main()
 {
-    float minDist = length(texture(colors, vec2(0, 0.5)) - texture(texToQuantize, texPos));
-    FragColor = texture(colors, vec2(0, 0.5));
-    for (float i = 1; i < numColors; i++) {
-        float dist = length(texture(colors, vec2(i/numColors, 0.5)) - texture(texToQuantize, texPos));
+
+    float minDist = length(colors[0] - texture(texToQuantize, texPos));
+    FragColor = colors[0];
+    for (int i = 1; i < numColors; i++) {
+        float dist = length(colors[i] - texture(texToQuantize, texPos));
         if (dist < minDist) {
             minDist = dist;
-            FragColor = texture(colors, vec2(i/numColors, 0.5));
+            FragColor = colors[i];
         }
     }
     
-    //FragColor = texture(colors, texPos);
 } 
