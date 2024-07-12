@@ -10,7 +10,9 @@ namespace QUANTIZER {
 
     static GLuint qProgramID;
     static GLuint qSegmentProgID;
-    static GLuint qOverlayProg;
+    static GLuint qOverlayProgID;
+    static GLuint qHappyMistakeProgID;
+    static GLuint qSmootherProgID;
     static GLuint qVBO;
     static GLuint qVAO;
     static GLuint qEBO;
@@ -20,12 +22,12 @@ namespace QUANTIZER {
      * quantizes Tex into a new texture with the colors in colors
      * requires numColors == std::pow(2, n)
      */
-    void quantize(GLuint tex, GLuint* quantizedTex, float* colorData, int numColors, bool newMethod);
+    void quantize(GLuint tex, GLuint* quantizedTex, float* colorData, int numColors, int highlightedColor, int smooth, bool happyMistake);
 
     void genSegments(GLuint quantizedTex, GLuint *segmentTex);
 
     //stretches and overlays tex2 onto tex1 (will only work if tex2 conatains non 1 alpha values)
-    void overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex);
+    void overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex, float* tex1UV0, float* tex1UV1, float* tex2UV0, float* tex2UV1);
 
     /**
      * sets up the quantizer program to be used

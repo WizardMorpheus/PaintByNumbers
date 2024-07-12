@@ -16,7 +16,11 @@ private:
     bool saving;
     bool quantized;
     bool showSegments;
-    bool newMethod;
+    bool labelling;
+    int smooth;
+    int highlightedColor;
+    int fontSize;
+    bool happyMistake;
     ImGuiIO io;
     ImGui::FileBrowser loadDialog;
     ImGui::FileBrowser saveDialog;
@@ -30,14 +34,14 @@ private:
     GLuint crntQuantID;
     GLuint crntSegmentID;
     GLuint crntOverlayID;
+    GLuint fontTex;
 
-    /**
-     * variables for limitFPS
-     */
-    Timer timer;
-    int FPSLimit;
+    ImVec2 imagePosition;
+    int imageScale;
 
-    void imguiImageCentred(GLuint Tex, ImVec2 boundingBox);
+    void imguiGetImageFillSizeAndOffset(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
+
+    void requantize();
 
 public:
     GUI(GLFWwindow* window);
@@ -54,10 +58,7 @@ public:
     void setColor(int index, float* color);
     void setCrntTexId(GLuint texID);
 
-    /**
-     * caps fps at value, 0 or less for no limit, no guaruntee for high fps
-     */
-    void limitFPS(int value);
+    void handleInput();
 
 };
 

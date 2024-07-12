@@ -43,6 +43,7 @@ int main()
 		// input
 		// -----
 		processInput(win);
+		gui.handleInput();
 
 		gui.render(win);		
 

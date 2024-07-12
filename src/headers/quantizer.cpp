@@ -7,7 +7,7 @@
 #include <random>
 #include <chrono>
 
-void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int numColors, bool newMethod) {
+void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int numColors, int highlightedColor, int smooth, bool happyMistake) {
     
     if (QUANTIZER::qProgramID == 0) return;
 
@@ -22,22 +22,25 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int
     glGenFramebuffers(1, &Framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
 
+
+    GLuint tempTex;
+
     // The texture we're going to render to
-    glGenTextures(1, quantizedTex);
+    glGenTextures(1, &tempTex);
 
     // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, *quantizedTex);
+    glBindTexture(GL_TEXTURE_2D, tempTex);
 
 
     // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
 
     // Poor filtering. Needed !
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     // Set "renderedTexture" as our colour attachement #0
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *quantizedTex, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tempTex, 0);
 
     // Set the list of draw buffers.
     GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
@@ -46,7 +49,8 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int
 
     // Always check that our framebuffer is ok
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        *quantizedTex = 0;
+        glDeleteTextures(1, &tempTex);
+        tempTex = 0;
         return;
     }
 
@@ -66,10 +70,116 @@ void QUANTIZER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int
     glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "texToQuantize"), 0);
     glUniform4fv(glGetUniformLocation(QUANTIZER::qProgramID, "colors"), numColors, colorData);
     glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "numColors"), numColors);
-    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "newMethod"), (int)newMethod);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qProgramID, "highlightedColor"), highlightedColor);
     
 
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+
+    for (int i = 0; i < smooth; i++) {
+
+        // The texture we're going to render to
+        glGenTextures(1, quantizedTex);
+
+        // "Bind" the newly created texture : all future texture functions will modify this texture
+        glBindTexture(GL_TEXTURE_2D, *quantizedTex);
+
+
+        // Give an empty image to OpenGL ( the last "0" )
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+        // Poor filtering. Needed !
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *quantizedTex, 0);
+        // Set the list of draw buffers.
+        GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+
+        // Always check that our framebuffer is ok
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            glDeleteTextures(1, quantizedTex);
+            quantizedTex = 0;
+            return;
+        }
+
+        // Render to our framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
+        glViewport(0,0,dims[0],dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
+
+
+        glBindVertexArray(QUANTIZER::qVAO);
+
+        glUseProgram(QUANTIZER::qSmootherProgID);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tempTex);
+
+        glUniform1i(glGetUniformLocation(QUANTIZER::qSmootherProgID, "texToQuantize"), 0);
+        glUniform1i(glGetUniformLocation(QUANTIZER::qSmootherProgID, "texWidth"), dims[0]);
+        glUniform1i(glGetUniformLocation(QUANTIZER::qSmootherProgID, "texHeight"), dims[1]);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+        glDeleteTextures(1, &tempTex);
+        tempTex = *quantizedTex;
+
+    }
+    *quantizedTex = tempTex;
+
+    if (happyMistake) {
+
+        tempTex = *quantizedTex;
+
+        // The texture we're going to render to
+        glGenTextures(1, quantizedTex);
+
+        // "Bind" the newly created texture : all future texture functions will modify this texture
+        glBindTexture(GL_TEXTURE_2D, *quantizedTex);
+
+
+        // Give an empty image to OpenGL ( the last "0" )
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+        // Poor filtering. Needed !
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, *quantizedTex, 0);
+        // Set the list of draw buffers.
+        GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+
+        // Always check that our framebuffer is ok
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            glDeleteTextures(1, quantizedTex);
+            quantizedTex = 0;
+            return;
+        }
+
+        // Render to our framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
+        glViewport(0,0,dims[0],dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
+
+
+        glBindVertexArray(QUANTIZER::qVAO);
+
+        glUseProgram(QUANTIZER::qHappyMistakeProgID);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tempTex);
+
+        glUniform1i(glGetUniformLocation(QUANTIZER::qHappyMistakeProgID, "texToQuantize"), 0);
+        glUniform1i(glGetUniformLocation(QUANTIZER::qHappyMistakeProgID, "texWidth"), dims[0]);
+        glUniform1i(glGetUniformLocation(QUANTIZER::qHappyMistakeProgID, "texHeight"), dims[1]);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+
+        glDeleteTextures(1, &tempTex);
+
+    }
+
 
     glActiveTexture(GL_TEXTURE0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -154,7 +264,7 @@ void QUANTIZER::genSegments(GLuint quantizedTex, GLuint *segmentTex) {
 
 }
 
-void QUANTIZER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex) {
+void QUANTIZER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex, float* tex1UV0, float* tex1UV1, float* tex2UV0, float* tex2UV1) {
     
     if (QUANTIZER::qProgramID == 0) return;
 
@@ -177,7 +287,7 @@ void QUANTIZER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex) {
 
 
     // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
 
     // Poor filtering. Needed !
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -205,7 +315,7 @@ void QUANTIZER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex) {
 
     glBindVertexArray(QUANTIZER::qVAO);
 
-    glUseProgram(QUANTIZER::qOverlayProg);
+    glUseProgram(QUANTIZER::qOverlayProgID);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex1);
@@ -213,9 +323,14 @@ void QUANTIZER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex) {
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, tex2);
 
-    glUniform1i(glGetUniformLocation(QUANTIZER::qOverlayProg, "tex1"), 0);
-    glUniform1i(glGetUniformLocation(QUANTIZER::qOverlayProg, "tex2"), 1);
-    
+    glUniform1i(glGetUniformLocation(QUANTIZER::qOverlayProgID, "tex1"), 0);
+    glUniform1i(glGetUniformLocation(QUANTIZER::qOverlayProgID, "tex2"), 1);
+    glUniform2f(glGetUniformLocation(QUANTIZER::qOverlayProgID, "tex1UV0"), tex1UV0[0], tex1UV0[1]);
+    glUniform2f(glGetUniformLocation(QUANTIZER::qOverlayProgID, "tex1UV1"), tex1UV1[0], tex1UV1[1]);
+    glUniform2f(glGetUniformLocation(QUANTIZER::qOverlayProgID, "tex2UV0"), tex2UV0[0], tex2UV0[1]);
+    glUniform2f(glGetUniformLocation(QUANTIZER::qOverlayProgID, "tex2UV1"), tex2UV1[0], tex2UV1[1]);
+
+
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
 
     glActiveTexture(GL_TEXTURE0);
@@ -262,7 +377,9 @@ void QUANTIZER::setupQuantizer() {
 
     QUANTIZER::qProgramID = GLWRAP::LoadShaders("resources\\shaders\\quantizer.vert", "resources\\shaders\\quantizer.frag");
     QUANTIZER::qSegmentProgID = GLWRAP::LoadShaders("resources\\shaders\\segmentGenerator.vert", "resources\\shaders\\segmentGenerator.frag");
-    QUANTIZER::qOverlayProg = GLWRAP::LoadShaders("resources\\shaders\\splice.vert", "resources\\shaders\\splice.frag");
+    QUANTIZER::qOverlayProgID = GLWRAP::LoadShaders("resources\\shaders\\splice.vert", "resources\\shaders\\splice.frag");
+    QUANTIZER::qHappyMistakeProgID = GLWRAP::LoadShaders("resources\\shaders\\happyMistake.vert", "resources\\shaders\\happyMistake.frag");
+    QUANTIZER::qSmootherProgID = GLWRAP::LoadShaders("resources\\shaders\\smoother.vert", "resources\\shaders\\smoother.frag");
 }
 
 void QUANTIZER::closeQuantizer() {

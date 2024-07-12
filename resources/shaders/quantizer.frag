@@ -6,11 +6,9 @@ in vec2 texPos;
 uniform sampler2D texToQuantize;
 uniform vec4 colors[16];
 uniform int numColors;
-uniform int newMethod;
+uniform int highlightedColor;
 
-
-void main()
-{
+void main() {
 
     float minDist = length(colors[0] - texture(texToQuantize, texPos));
     FragColor = colors[0];
@@ -21,5 +19,8 @@ void main()
             FragColor = colors[i];
         }
     }
-    
+    if (highlightedColor != -1 && FragColor != colors[highlightedColor]) {
+        FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+
 } 

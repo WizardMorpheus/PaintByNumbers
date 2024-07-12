@@ -86,20 +86,20 @@ namespace GLWRAP
     void saveTex(const char *filePath, const char* fileType, GLuint *tex) {
         int dims[2];
         queryTex(*tex, dims, GL_TEXTURE_2D);
-        unsigned char* data = new unsigned char[dims[0]*dims[1]*3];
+        unsigned char* data = new unsigned char[dims[0]*dims[1]*4];
 
         glBindTexture(GL_TEXTURE_2D, *tex);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         GLenum err = glGetError();
 
         if (std::string(fileType) == ".png") {
-            stbi_write_png(filePath, dims[0], dims[1], 3, data, sizeof(char) * 3 * dims[0]);
+            stbi_write_png(filePath, dims[0], dims[1], 4, data, sizeof(char) * 4 * dims[0]);
         } else if (std::string(fileType) == ".bmp") {
-            stbi_write_bmp(filePath, dims[0], dims[1], 3, data);
+            stbi_write_bmp(filePath, dims[0], dims[1], 4, data);
         } else if (std::string(fileType) == ".tga") {
-            stbi_write_tga(filePath, dims[0], dims[1], 3, data);
+            stbi_write_tga(filePath, dims[0], dims[1], 4, data);
         } else if (std::string(fileType) == ".jpg") {
-            stbi_write_jpg(filePath, dims[0], dims[1], 3, data, 100);
+            stbi_write_jpg(filePath, dims[0], dims[1], 4, data, 100);
         }
         
     }

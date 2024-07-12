@@ -8,8 +8,8 @@ uniform sampler2D texToSegment;
 uniform int texWidth;
 uniform int texHeight;
 
-void main()
-{
+void main() {
+
     float diff = 0;
     float deltaX = 1/float(texWidth);
     float deltaY = 1/float(texHeight);
