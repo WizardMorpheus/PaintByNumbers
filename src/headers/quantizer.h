@@ -5,17 +5,18 @@
 
 #include <vector>
 
-namespace QUANTIZER {
+namespace PROGHANDLER {
 
 
-    static GLuint qProgramID;
-    static GLuint qSegmentProgID;
-    static GLuint qOverlayProgID;
-    static GLuint qHappyMistakeProgID;
-    static GLuint qSmootherProgID;
-    static GLuint qVBO;
-    static GLuint qVAO;
-    static GLuint qEBO;
+    static GLuint quantizerProgramID;
+    static GLuint segmentProgID;
+    static GLuint overlayProgID;
+    static GLuint happyMistakeProgID;
+    static GLuint smootherProgID;
+    static GLuint keymakerProgID;
+    static GLuint VBO;
+    static GLuint VAO;
+    static GLuint EBO;
     
     
     /**
@@ -29,15 +30,17 @@ namespace QUANTIZER {
     //stretches and overlays tex2 onto tex1 (will only work if tex2 conatains non 1 alpha values)
     void overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex, float* tex1UV0, float* tex1UV1, float* tex2UV0, float* tex2UV1);
 
+    void generateKey(GLuint fontTex, GLuint* keyTex, float* colorData, int numColors);
+
     /**
      * sets up the quantizer program to be used
      */
-    void setupQuantizer();
+    void setupPrograms();
 
     /**
      * deletes the quantizer program 
      */
-    void closeQuantizer();
+    void closePrograms();
 
     /**
      * calculates the best representative colors for tex using colors->size() colors, and stores those colors in colors

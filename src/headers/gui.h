@@ -42,6 +42,7 @@ private:
     void imguiGetImageFillSizeAndOffset(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
 
     void requantize();
+    void regenSegs();
 
 public:
     GUI(GLFWwindow* window);

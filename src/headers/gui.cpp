@@ -46,12 +46,21 @@ void GUI::imguiGetImageFillSizeAndOffset(GLuint Tex, ImVec2 boundingBox, ImVec2*
 
 }
 
-void GUI::requantize(){
+void GUI::requantize() {
     GLuint temp;
-    QUANTIZER::quantize(this->crntTexID, &temp, this->colorData, this->numColors, this->highlightedColor, this->smooth, this->happyMistake);
+    PROGHANDLER::quantize(this->crntTexID, &temp, this->colorData, this->numColors, this->highlightedColor, this->smooth, this->happyMistake);
     if (temp != 0) {
         glDeleteTextures(1, &this->crntQuantID);
         this->crntQuantID = temp;
+    }
+}
+
+void GUI::regenSegs() {
+    GLuint temp;
+    PROGHANDLER::genSegments(this->crntQuantID, &temp);
+    if (temp != 0) {
+        glDeleteTextures(1, &this->crntSegmentID);
+        this->crntSegmentID = temp;
     }
 }
 
@@ -108,7 +117,7 @@ GUI::GUI(GLFWwindow *window) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    QUANTIZER::setupQuantizer();
+    PROGHANDLER::setupPrograms();
 }
 
 void GUI::render(GLFWwindow* window) {
@@ -151,13 +160,8 @@ void GUI::render(GLFWwindow* window) {
 
 
     if (this->showSegments) {
-        GLuint temp;
         if (!this->labelling && !this->saving) {
-            QUANTIZER::genSegments(this->crntQuantID, &temp);
-            if (temp != 0) {
-                glDeleteTextures(1, &this->crntSegmentID);
-                this->crntSegmentID = temp;
-            }
+            regenSegs();
         }
     }
 
@@ -173,11 +177,11 @@ void GUI::render(GLFWwindow* window) {
         }
 
         if (ImGui::Button("Randomize Color Pallette")) {
-            QUANTIZER::calcBestColors(this->crntTexID, this->colorData, this->numColors, true);// arbitrary depth should be enough
+            PROGHANDLER::calcBestColors(this->crntTexID, this->colorData, this->numColors, true);// arbitrary depth should be enough
             requantize();
         }
         if (ImGui::Button("'Guess' Best Colors")) {
-            QUANTIZER::calcBestColors(this->crntTexID, this->colorData, this->numColors, false);// arbitrary depth should be enough
+            PROGHANDLER::calcBestColors(this->crntTexID, this->colorData, this->numColors, false);// arbitrary depth should be enough
             requantize();
         }
         ImGui::Separator();
@@ -190,7 +194,10 @@ void GUI::render(GLFWwindow* window) {
     
         if (ImGui::Button(this->labelling ? "Cancel Labelling" : "Label Sections")) {
             this->labelling = !this->labelling;
-            if (this->labelling) this->highlightedColor = 0;
+            if (this->labelling) {
+                this->highlightedColor = 0;
+                regenSegs();
+            }
             else this->highlightedColor = -1;
             requantize();
         }
@@ -245,7 +252,7 @@ void GUI::render(GLFWwindow* window) {
                 float UV0[2] =  {0.0, 0.0};
                 float UV1[2] =  {1.0, 1.0};
 
-                QUANTIZER::overlayTextures(this->crntQuantID, this->crntSegmentID, &this->crntOverlayID,
+                PROGHANDLER::overlayTextures(this->crntQuantID, this->crntSegmentID, &this->crntOverlayID,
                                             UV0, UV1, UV0, UV1);
                 if (this->crntOverlayID == 0) this->crntOverlayID = this->crntQuantID;
 
@@ -263,7 +270,7 @@ void GUI::render(GLFWwindow* window) {
                     float UV0[2] =  {0.0, 0.0};
                     float UV1[2] =  {1.0, 1.0};
 
-                    QUANTIZER::overlayTextures(this->crntQuantID, this->crntSegmentID, &this->crntOverlayID,
+                    PROGHANDLER::overlayTextures(this->crntQuantID, this->crntSegmentID, &this->crntOverlayID,
                                                 UV0, UV1, UV0, UV1);
                     if (this->crntOverlayID == 0) this->crntOverlayID = this->crntQuantID;
                 }
@@ -282,7 +289,7 @@ void GUI::render(GLFWwindow* window) {
                     float UV0[2] =  {0.0, 0.0};
                     float UV1[2] =  {1.0, 1.0};
 
-                    QUANTIZER::overlayTextures(this->crntTexID, this->crntSegmentID, &this->crntOverlayID,
+                    PROGHANDLER::overlayTextures(this->crntTexID, this->crntSegmentID, &this->crntOverlayID,
                                                 UV0, UV1, UV0, UV1);
                     if (this->crntOverlayID == 0) this->crntOverlayID = this->crntTexID;
                 }
@@ -295,14 +302,6 @@ void GUI::render(GLFWwindow* window) {
         }
 
         if (this->labelling) {
-            if (this->crntSegmentID == 0) {
-                GLuint temp;
-                QUANTIZER::genSegments(this->crntQuantID, &temp);
-                if (temp != 0) {
-                    glDeleteTextures(1, &this->crntSegmentID);
-                    this->crntSegmentID = temp;
-                }
-            }
 
             int fontTexDims[2];
             GLWRAP::queryTex(this->crntTexID, fontTexDims, GL_TEXTURE_2D);
@@ -313,8 +312,8 @@ void GUI::render(GLFWwindow* window) {
             float stampWidth = float(fontTexDims[0])/16 * std::pow(1.1, this->fontSize);
 
             ImVec2 stampSize = ImVec2(stampWidth, stampWidth);
-            float tex2UV0[2] = {float((this->highlightedColor + 48)%16)/16, float((this->highlightedColor + 48)/16)/16};
-            float tex2UV1[2] = {float((this->highlightedColor + 48)%16 + 1)/16, float((this->highlightedColor + 48)/16 + 1)/16};
+            float tex2UV0[2] = {float((this->highlightedColor + 'A')%16)/16, float((this->highlightedColor + 'A')/16)/16};
+            float tex2UV1[2] = {float((this->highlightedColor + 'A')%16 + 1)/16, float((this->highlightedColor + 'A')/16 + 1)/16};
 
 
             ImGui::SetCursorPos(ImGui::GetMousePos() - ImGui::GetWindowPos() - stampSize);
@@ -324,20 +323,40 @@ void GUI::render(GLFWwindow* window) {
 
             // save
             if (this->highlightedColor > this->numColors) {
+
+
                 if(!this->saveDialog.IsOpened()) this->saveDialog.Open();
                 this->saveDialog.Display();
                 if (this->saveDialog.HasSelected()) {
                     // save
-                    GLWRAP::saveTex(this->saveDialog.GetSelected().generic_string().c_str(),
-                                    this->saveDialog.GetSelected().extension().generic_string().c_str(),
-                                    &this->crntSegmentID);
+                    std::string fileName = this->saveDialog.GetSelected().generic_string();
+                    std::string fileExtension = this->saveDialog.GetSelected().extension().generic_string();
 
+                    // save stencil
+                    GLWRAP::saveTex(fileName.c_str(), fileExtension.c_str(), &this->crntSegmentID);
+
+                    // save render
+                    this->happyMistake = false;
+                    this->highlightedColor = -1;
+                    requantize();
+                    fileName.insert(fileName.length() - 4, "_colored");
+                    GLWRAP::saveTex(fileName.c_str(), fileExtension.c_str(), &this->crntQuantID);
+
+                    // save key
+                    GLuint temp;
+                    PROGHANDLER::generateKey(this->fontTex, &temp, this->colorData, this->numColors);
+                    fileName.replace(fileName.length() - 4 - std::string("_colored").length(), std::string("_colored").length(), "_key");
+                    GLWRAP::saveTex(fileName.c_str(), fileExtension.c_str(), &temp);
+                    glDeleteTextures(1, &temp);
+ 
                     this->saveDialog.ClearSelected();
                     this->saveDialog.Close();
                     this->saving = false;
                     this->labelling = false;
                     this->highlightedColor = -1;
                 }
+
+
             } else {
                 ImVec2 mousePos = ImGui::GetMousePos();
                 if (mousePos.x > ImGui::GetWindowPos().x && mousePos.y > ImGui::GetWindowPos().y &&
@@ -353,7 +372,7 @@ void GUI::render(GLFWwindow* window) {
                         float tex1UV1[2] = {offset.x + stampWidth/adjustedSize.x, offset.y + stampWidth/adjustedSize.y};
                         
                         GLuint temp;
-                        QUANTIZER::overlayTextures(this->crntSegmentID, this->fontTex, &temp, tex1UV0, tex1UV1, tex2UV0, tex2UV1);
+                        PROGHANDLER::overlayTextures(this->crntSegmentID, this->fontTex, &temp, tex1UV0, tex1UV1, tex2UV0, tex2UV1);
                         if (temp != 0) {
                             glDeleteTextures(1, &this->crntSegmentID);
                             this->crntSegmentID = temp;
@@ -395,7 +414,7 @@ void GUI::cleanup() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    QUANTIZER::closeQuantizer();
+    PROGHANDLER::closePrograms();
 }
 
 void GUI::framebufferSizeCallback(GLFWwindow *window, int width, int height) {
