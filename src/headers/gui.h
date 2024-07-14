@@ -38,8 +38,11 @@ private:
 
     ImVec2 imagePosition;
     int imageScale;
+    float imageScaleExponent;
+    float imageScaleImcrement;
 
-    void imguiGetImageFillSizeAndOffset(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
+    void getImageSizeAndOffsetInBoundingBox(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
+    void getImageSizeAndOffsetInWindow(GLuint Tex, ImVec2 windowSize, ImVec2* adjustedSize, ImVec2* offset);
 
     void requantize();
     void regenSegs();

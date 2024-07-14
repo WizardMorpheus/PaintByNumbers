@@ -21,12 +21,12 @@
 const std::vector<std::string> loadFileTypes = { ".jpeg", ".jpg", ".png" , ".tga", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".pnm"};
 const std::vector<std::string> saveFileTypes = { ".jpg", ".png" , ".tga", ".bmp"};
 
-void GUI::imguiGetImageFillSizeAndOffset(GLuint Tex, ImVec2 boundingBox, ImVec2* adjustedSize, ImVec2* reqOffset) {
+void GUI::getImageSizeAndOffsetInBoundingBox(GLuint Tex, ImVec2 boundingBox, ImVec2* adjustedSize, ImVec2* reqOffset) {
     int dims[2];
     GLWRAP::queryTex(Tex, dims, GL_TEXTURE_2D);
     ImVec2 dimsVec = ImVec2(dims[0], dims[1]);
 
-    boundingBox = boundingBox * std::pow(1.05, this->imageScale);
+    boundingBox = boundingBox;
 
     if (boundingBox.x/boundingBox.y > dimsVec.x/dimsVec.y) {
         adjustedSize->y = boundingBox.y;
@@ -44,6 +44,16 @@ void GUI::imguiGetImageFillSizeAndOffset(GLuint Tex, ImVec2 boundingBox, ImVec2*
 
     *reqOffset = *reqOffset + this->imagePosition;
 
+}
+
+void GUI::getImageSizeAndOffsetInWindow(GLuint Tex, ImVec2 windowSize, ImVec2 *adjustedSize, ImVec2 *offset) {
+    ImVec2 tempOffset;
+    getImageSizeAndOffsetInBoundingBox(Tex, windowSize, adjustedSize, &tempOffset);
+    *adjustedSize = *adjustedSize * std::pow(this->imageScaleExponent, this->imageScale);
+    offset->x = tempOffset.x + (windowSize.x/2)*(1-std::pow(this->imageScaleExponent, this->imageScale)) 
+                         + this->imagePosition.x * std::pow(this->imageScaleExponent, this->imageScale);
+    offset->y = tempOffset.y + (windowSize.y/2)*(1-std::pow(this->imageScaleExponent, this->imageScale)) 
+                         + this->imagePosition.y * std::pow(this->imageScaleExponent, this->imageScale);
 }
 
 void GUI::requantize() {
@@ -95,6 +105,8 @@ GUI::GUI(GLFWwindow *window) {
 
     this->imagePosition = ImVec2(0,0);
     this->imageScale = 0;
+    this->imageScaleExponent = 1.1;
+    this->imageScaleImcrement = 5.0;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -228,6 +240,9 @@ void GUI::render(GLFWwindow* window) {
             ImGui::Text("No image loaded");
         }
         
+        ImGui::SliderInt("imageScale", &this->imageScale, -20, 20);
+        ImGui::SliderFloat("imageScaleExponent", &this->imageScaleExponent, 0.1, 10);
+        ImGui::SliderFloat("imageSCaleIncrement", &this->imageScaleImcrement, 0.1, 10);
 
 
         ImGui::End();
@@ -257,7 +272,7 @@ void GUI::render(GLFWwindow* window) {
                 if (this->crntOverlayID == 0) this->crntOverlayID = this->crntQuantID;
 
                 ImVec2 adjustedSize, offset;
-                this->imguiGetImageFillSizeAndOffset(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
+                getImageSizeAndOffsetInWindow(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
                 ImGui::SetCursorPos(ImGui::GetCursorPos() + offset);
                 ImGui::Image((ImTextureID)this->crntOverlayID, adjustedSize);
             }
@@ -276,7 +291,7 @@ void GUI::render(GLFWwindow* window) {
                 }
 
                 ImVec2 adjustedSize, offset;
-                this->imguiGetImageFillSizeAndOffset(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
+                getImageSizeAndOffsetInWindow(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
                 ImGui::SetCursorPos(ImGui::GetCursorPos() + offset);
                 ImGui::Image((ImTextureID)this->crntOverlayID, adjustedSize);
             }
@@ -295,36 +310,15 @@ void GUI::render(GLFWwindow* window) {
                 }
 
                 ImVec2 adjustedSize, offset;
-                this->imguiGetImageFillSizeAndOffset(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
+                getImageSizeAndOffsetInWindow(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
                 ImGui::SetCursorPos(ImGui::GetCursorPos() + offset);
                 ImGui::Image((ImTextureID)this->crntOverlayID, adjustedSize);
             }
         }
 
-        if (this->labelling) {
-
-            int fontTexDims[2];
-            GLWRAP::queryTex(this->crntTexID, fontTexDims, GL_TEXTURE_2D);
-
-            if (ImGui::IsKeyPressed(ImGuiKey_Comma)) this->fontSize--;
-            else if (ImGui::IsKeyPressed(ImGuiKey_Period)) this->fontSize++;
-
-            float stampWidth = float(fontTexDims[0])/16 * std::pow(1.1, this->fontSize);
-
-            ImVec2 stampSize = ImVec2(stampWidth, stampWidth);
-            float tex2UV0[2] = {float((this->highlightedColor + 'A')%16)/16, float((this->highlightedColor + 'A')/16)/16};
-            float tex2UV1[2] = {float((this->highlightedColor + 'A')%16 + 1)/16, float((this->highlightedColor + 'A')/16 + 1)/16};
-
-
-            ImGui::SetCursorPos(ImGui::GetMousePos() - ImGui::GetWindowPos() - stampSize);
-            ImGui::Image((ImTextureID)this->fontTex, stampSize,
-                            ImVec2(tex2UV0[0], tex2UV0[1]), ImVec2(tex2UV1[0], tex2UV1[1]));
-            
-
+        if (this->labelling) {        
             // save
             if (this->highlightedColor > this->numColors) {
-
-
                 if(!this->saveDialog.IsOpened()) this->saveDialog.Open();
                 this->saveDialog.Display();
                 if (this->saveDialog.HasSelected()) {
@@ -355,15 +349,29 @@ void GUI::render(GLFWwindow* window) {
                     this->labelling = false;
                     this->highlightedColor = -1;
                 }
-
-
             } else {
+                int fontTexDims[2];
+                GLWRAP::queryTex(this->crntTexID, fontTexDims, GL_TEXTURE_2D);
+
+                
+
+                float stampWidth = float(fontTexDims[0])/16 * std::pow(1.1, this->fontSize);
+
+                ImVec2 stampSize = ImVec2(stampWidth, stampWidth);
+                float tex2UV0[2] = {float((this->highlightedColor + 'A')%16)/16, float((this->highlightedColor + 'A')/16)/16};
+                float tex2UV1[2] = {float((this->highlightedColor + 'A')%16 + 1)/16, float((this->highlightedColor + 'A')/16 + 1)/16};
+
+
+                ImGui::SetCursorPos(ImGui::GetMousePos() - ImGui::GetWindowPos() - stampSize);
+                ImGui::Image((ImTextureID)this->fontTex, stampSize,
+                                ImVec2(tex2UV0[0], tex2UV0[1]), ImVec2(tex2UV1[0], tex2UV1[1]));
+
                 ImVec2 mousePos = ImGui::GetMousePos();
                 if (mousePos.x > ImGui::GetWindowPos().x && mousePos.y > ImGui::GetWindowPos().y &&
                     mousePos.x < ImGui::GetWindowPos().x + ImGui::GetWindowSize().x && mousePos.y < ImGui::GetWindowPos().y + ImGui::GetWindowSize().y) {
                     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                         ImVec2 adjustedSize, offset;
-                        this->imguiGetImageFillSizeAndOffset(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
+                        getImageSizeAndOffsetInWindow(this->crntOverlayID, ImGui::GetWindowSize(), &adjustedSize, &offset);
                         offset = mousePos - ImGui::GetWindowPos() - offset - stampSize;
                         offset.x /= adjustedSize.x;
                         offset.y /= adjustedSize.y;
@@ -442,13 +450,15 @@ void GUI::setCrntTexId(GLuint texID) {
 }
 
 void GUI::handleInput() {
-    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) this->imagePosition.x+=5;
-    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) this->imagePosition.x-=5;
-    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) this->imagePosition.y-=5;
-    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) this->imagePosition.y+=5;
+    if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow))    this->imagePosition.x+= this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+    if (ImGui::IsKeyPressed(ImGuiKey_RightArrow))   this->imagePosition.x-= this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+    if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))    this->imagePosition.y-= this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+    if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))      this->imagePosition.y+= this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
 
     if (ImGui::IsKeyPressed(ImGuiKey_K)) this->imageScale--;
     if (ImGui::IsKeyPressed(ImGuiKey_L)) this->imageScale++;
 
+    if (ImGui::IsKeyPressed(ImGuiKey_Comma)) this->fontSize--;
+    else if (ImGui::IsKeyPressed(ImGuiKey_Period)) this->fontSize++;
 
 }
