@@ -13,13 +13,14 @@
                 "${workspaceFolder}/include/imgui/*.cpp",
                 "-std=c++20",
                 "-I${workspaceFolder}/include",
+                "-I${workspaceFolder}",
                 "-L${workspaceFolder}/lib",
                 "-lglfw3dll",
                 "-o",
                 "${workspaceFolder}/bin/debug/PaintByNumbers.exe"
             ],
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/bin/debug"
             },
             "problemMatcher": [
                 "$gcc"

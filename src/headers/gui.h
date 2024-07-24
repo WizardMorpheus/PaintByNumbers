@@ -14,6 +14,7 @@ private:
     bool fileMenuOpen;
     bool loading;
     bool saving;
+    bool manualOpen;
     bool quantized;
     bool showSegments;
     bool labelling;

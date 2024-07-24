@@ -3,7 +3,7 @@
 #include "opengl.h"
 
 #include "glWrap.h"
-#include "quantizer.h"
+#include "proghandler.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stbImage/stb_image.h"
@@ -101,7 +101,7 @@ GUI::GUI(GLFWwindow *window) {
     this->crntSegmentID = 0;
     this->crntOverlayID = 0;
     this->fontTex = 0;
-    GLWRAP::loadTex("bin/debug/fontTex.png", &this->fontTex);
+    GLWRAP::loadTex("..\\..\\resources\\textures\\fontTex.png", &this->fontTex);
 
     this->imagePosition = ImVec2(0,0);
     this->imageScale = 0;
@@ -154,6 +154,8 @@ void GUI::render(GLFWwindow* window) {
 
             ImGui::EndMenu();
         }
+
+        if (ImGui::MenuItem("help?")) this->manualOpen = true;
 
         ImGui::Separator();
 
@@ -411,6 +413,63 @@ void GUI::render(GLFWwindow* window) {
             this->loading = false;
         }
     }
+
+
+    if (this->manualOpen) {
+        if (ImGui::Begin("Manual", &this->manualOpen, ImGuiWindowFlags_NoResize)) {
+            ImGui::SetWindowFocus("Manual");
+            ImGui::Text(R"V0G0N(
+                                    Hello
+
+My name is Charlie. Thank you for using my program. This is a paint by numbers 
+stencil generator that I originially made for my girlfriend. It will take (almost)
+any digital image, quantize it (that is reduce the color count) and "smooth" it.
+Then it will generate the stencil, you can place number markers on it, and it will 
+save those images so that you can print them out.
+
+I would recommend going to your local stationary/hobbyist store and buying some 
+canvas, and paints, then printing the stencil and tracing it onto the canvas so 
+you can paint it. If you're luckier than me there will be a store nearby that will
+straight print the stencil on a cavas for you for not so much.
+
+Using the program is pretty simple. Under the file menu is a load button, hit that
+and pick whichever image you want to turn into a paint by numbers stencil. the 
+image should load up and show on the image section. You can use the arrow keys to 
+move the image around and the , and . keys to zoom in and out.
+
+Once an image is loaded, you can press the "randomize color pallette" button, which
+should "randomize" the colors on the left to ones that are somewhat present in your
+image. press the quantize button to see you image with only these colors. If you 
+are not happy with those colors, press the button again, hit the 'guess' best colors 
+button to "improve" them, or edit them manually (eyedropper coming soon maybe).
+
+With your colors selected, crank up the 'smooth' number up the top to "smooth" your 
+image. This will  take out the majority of noisy areas of the image and leave you 
+with more blob-like color patches which are way easier to paint.
+
+When you are happy with the final image, press the Label Sections button to begin
+adding the numbers you will paint by. The color you are currently labelling will be
+highlighted. you can place a label by clicking the mouse, or change the size of the
+label by pressing k or l. Hit next or last color to do so. When you press next color
+on the last color, you will enter the save menu, name the file, what you want, make 
+sure to include the file extension.
+
+
+
+Notes:
+  * When saving the program is known to crash occasionally. It is likely that it 
+    saved your images first though.
+  * There are limited input and output image file types, they can be read on the 
+    save and load dialogs.
+  * It is possible, that when placing labels that they don't place well (get faint)
+    on the stencil. For now, try increasing the label size, I'm working on a solution
+
+            )V0G0N");
+
+            ImGui::End();
+        }
+    }
+
 
     // Rendering
     ImGui::Render();
