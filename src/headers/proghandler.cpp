@@ -7,6 +7,7 @@
 #include <random>
 #include <chrono>
 
+
 void PROGHANDLER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int numColors, int highlightedColor, int smooth, bool happyMistake) {
     
     if (PROGHANDLER::quantizerProgramID == 0) return;
@@ -530,7 +531,7 @@ void PROGHANDLER::calcBestColors(GLuint tex, float* colorData, int numColors, bo
     
     std::vector<int> numValsInColor;
     numValsInColor.resize(tempColors.size());
-    for (int i = 0; i < numValsInColor.size(); i++)
+    for (long unsigned int i = 0; i < numValsInColor.size(); i++)
         numValsInColor[i] = 0;
 
     for (int x = 0; x < texDims[0]; x++) {
@@ -543,7 +544,7 @@ void PROGHANDLER::calcBestColors(GLuint tex, float* colorData, int numColors, bo
             crntTexVal[2] = float(texData[(x + y*texDims[0]) * 4 + 2]) / 255;
             crntTexVal[3] = float(texData[(x + y*texDims[0]) * 4 + 3]) / 255;
 
-            for (int i = 1; i < tempColors.size(); i++) {
+            for (long unsigned int i = 1; i < tempColors.size(); i++) {
                 if (getDistance4(&colorData[i*4], crntTexVal) < getDistance4(&colorData[nearestColor*4], crntTexVal)) 
                     nearestColor = i;
             }
@@ -556,7 +557,7 @@ void PROGHANDLER::calcBestColors(GLuint tex, float* colorData, int numColors, bo
         }
     }
 
-    for (int i = 0; i < tempColors.size(); i++) {
+    for (long unsigned int i = 0; i < tempColors.size(); i++) {
         if (numValsInColor[i] != 0) {
             tempColors[i][0] = tempColors[i][0] / numValsInColor[i];
             tempColors[i][1] = tempColors[i][1] / numValsInColor[i];

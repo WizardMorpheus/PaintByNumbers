@@ -1,0 +1,6 @@
+bin/*
+output/*
+include/imgui
+lib/*
+include/GLFW
+build

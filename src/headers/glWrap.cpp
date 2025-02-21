@@ -42,7 +42,7 @@ namespace GLWRAP
 
         // glad: load all OpenGL function pointers
         // ---------------------------------------
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        if (!gladLoadGL(glfwGetProcAddress))
         {
             std::cout << "Failed to initialize GLAD" << std::endl;
             return false;
@@ -90,7 +90,7 @@ namespace GLWRAP
 
         glBindTexture(GL_TEXTURE_2D, *tex);
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        GLenum err = glGetError();
+        // GLenum err = glGetError();
 
         if (std::string(fileType) == ".png") {
             stbi_write_png(filePath, dims[0], dims[1], 4, data, sizeof(char) * 4 * dims[0]);
