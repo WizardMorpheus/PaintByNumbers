@@ -3,24 +3,24 @@
     "tasks": [
         {
             "type": "shell",
-            "label": "C/C++: g++.exe Debug build project",
-            "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
-            "args": [
-                "-g",
-                "${workspaceFolder}/src/*.cpp",
-                "${workspaceFolder}/src/headers/*.cpp",
-                "${workspaceFolder}/src/glad.c",
-                "${workspaceFolder}/include/imgui/*.cpp",
-                "-std=c++20",
-                "-I${workspaceFolder}/include",
-                "-I${workspaceFolder}",
-                "-L${workspaceFolder}/lib",
-                "-lglfw3dll",
-                "-o",
-                "${workspaceFolder}/bin/debug/PaintByNumbers.exe"
-            ],
+            "label": "install windows",
+            "command": "${workspaceFolder}/tools/install_windows.bat",
+            "args": [],
             "options": {
-                "cwd": "${workspaceFolder}/bin/debug"
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": "build"
+        },
+        {
+            "type": "shell",
+            "label": "install linux",
+            "command": "${workspaceFolder}/tools/install_linux.sh",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": [
                 "$gcc"

@@ -23,6 +23,7 @@
                     "ignoreFailures": true
                 }
             ],
+            "preLaunchTask": "install windows"
         },
         {
             "name": "debug linux",
@@ -43,6 +44,7 @@
                     "ignoreFailures": true
                 }
             ],
+            "preLaunchTask": "install linux"
         }
     ]
 }
