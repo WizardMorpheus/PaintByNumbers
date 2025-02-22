@@ -4,3 +4,4 @@ include/imgui
 lib/*
 include/GLFW
 build
+resources/.installed

@@ -64,5 +64,6 @@
     "span": "cpp",
     "variant": "cpp"
   },
-  "cmake.configureOnOpen": false
+  "cmake.configureOnOpen": true,
+  "cmake.cmakePath": "C:\\msys64\\mingw64\\bin\\cmake.exe"
 }

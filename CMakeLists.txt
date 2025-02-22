@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 project(PaintByNumbers)
 
 ###############################################################################
@@ -8,7 +8,8 @@ project(PaintByNumbers)
 # these instructions search the directory tree when CMake is
 # invoked and put all files that match the pattern in the variables
 # `sources` and `data`
-file(GLOB_RECURSE sources     src/gl.c src/main.cpp src/**/*.cpp src/**/*.h include/imgui/*.h include/imgui/*.cpp)
+# file(GLOB_RECURSE sources     src/gl.c src/main.cpp src/**/*.cpp src/**/*.h include/imgui/*.h include/imgui/*.cpp)
+file(GLOB_RECURSE sources     src/main.cpp src/gl.c include/imgui/*.cpp src/**.*.cpp)
 file(GLOB_RECURSE resources resources/*)
 # you can use set(sources src/main.cpp) etc if you don't want to
 # use globbing to find files automatically
@@ -29,6 +30,14 @@ target_include_directories(PaintByNumbers PUBLIC
     ./include/
 )
 
+target_link_directories(PaintByNumbers PUBLIC
+    lib
+)
+
+target_link_libraries(PaintByNumbers PUBLIC
+    glfw3dll
+) 
+
 # this copies all resource files in the build directory
 # we need this, because we want to work with paths relative to the executable
 file(COPY ${resources} DESTINATION resources)
@@ -40,16 +49,6 @@ file(COPY ${resources} DESTINATION resources)
 # this defines the variables Boost_LIBRARIES that contain all library names
 # that we need to link to
 
-target_link_libraries(PaintByNumbers PUBLIC
-    GL
-    GLU
-    glfw3
-)
-
-
-target_compile_definitions(PaintByNumbers PUBLIC
-  # here you can add any compile-time definitions
-)
 
 ###############################################################################
 ## packaging ##################################################################
