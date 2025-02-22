@@ -35,7 +35,7 @@ target_link_directories(PaintByNumbers PUBLIC
 )
 
 target_link_libraries(PaintByNumbers PUBLIC
-    glfw3dll
+    glfw3
 ) 
 
 # this copies all resource files in the build directory
