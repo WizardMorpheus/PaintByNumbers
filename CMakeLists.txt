@@ -9,7 +9,7 @@ project(PaintByNumbers)
 # invoked and put all files that match the pattern in the variables
 # `sources` and `data`
 # file(GLOB_RECURSE sources     src/gl.c src/main.cpp src/**/*.cpp src/**/*.h include/imgui/*.h include/imgui/*.cpp)
-file(GLOB_RECURSE sources     src/main.cpp src/gl.c include/imgui/*.cpp src/**.*.cpp)
+file(GLOB_RECURSE sources     src/main.cpp src/gl.c include/imgui/*.cpp src/**/*.cpp)
 file(GLOB_RECURSE resources resources/*)
 # you can use set(sources src/main.cpp) etc if you don't want to
 # use globbing to find files automatically

@@ -6,7 +6,7 @@
 #include <cmath>
 #include <random>
 #include <chrono>
-
+#include <filesystem>
 
 void PROGHANDLER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, int numColors, int highlightedColor, int smooth, bool happyMistake) {
     
@@ -450,18 +450,21 @@ void PROGHANDLER::setupPrograms() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);  
 
-    PROGHANDLER::quantizerProgramID =   GLWRAP::LoadShaders("..\\..\\resources\\shaders\\quantizer.vert", 
-                                                            "..\\..\\resources\\shaders\\quantizer.frag");
-    PROGHANDLER::segmentProgID =        GLWRAP::LoadShaders("..\\..\\resources\\shaders\\segmentGenerator.vert", 
-                                                            "..\\..\\resources\\shaders\\segmentGenerator.frag");
-    PROGHANDLER::overlayProgID =        GLWRAP::LoadShaders("..\\..\\resources\\shaders\\splice.vert", 
-                                                            "..\\..\\resources\\shaders\\splice.frag");
-    PROGHANDLER::happyMistakeProgID =   GLWRAP::LoadShaders("..\\..\\resources\\shaders\\happyMistake.vert", 
-                                                            "..\\..\\resources\\shaders\\happyMistake.frag");
-    PROGHANDLER::smootherProgID =       GLWRAP::LoadShaders("..\\..\\resources\\shaders\\smoother.vert", 
-                                                            "..\\..\\resources\\shaders\\smoother.frag");
-    PROGHANDLER::keymakerProgID =       GLWRAP::LoadShaders("..\\..\\resources\\shaders\\keymaker.vert", 
-                                                            "..\\..\\resources\\shaders\\keymaker.frag");
+    std::filesystem::path p = std::filesystem::current_path();
+    p.append("resources/shaders");
+
+    PROGHANDLER::quantizerProgramID =   GLWRAP::LoadShaders((p.append("quantizer.vert")).c_str(), 
+                                                            p.parent_path().append("shaders/quantizer.frag").c_str());
+    PROGHANDLER::segmentProgID =        GLWRAP::LoadShaders(p.parent_path().append("segmentGenerator.vert").c_str(), 
+                                                            p.parent_path().append("segmentGenerator.frag").c_str());
+    PROGHANDLER::overlayProgID =        GLWRAP::LoadShaders(p.parent_path().append("splice.vert").c_str(), 
+                                                            p.parent_path().append("splice.frag").c_str());
+    PROGHANDLER::happyMistakeProgID =   GLWRAP::LoadShaders(p.parent_path().append("happyMistake.vert").c_str(), 
+                                                            p.parent_path().append("happyMistake.frag").c_str());
+    PROGHANDLER::smootherProgID =       GLWRAP::LoadShaders(p.parent_path().append("smoother.vert").c_str(), 
+                                                            p.parent_path().append("smoother.frag").c_str());
+    PROGHANDLER::keymakerProgID =       GLWRAP::LoadShaders(p.parent_path().append("keymaker.vert").c_str(), 
+                                                            p.parent_path().append("keymaker.frag").c_str());
 
 }
 
