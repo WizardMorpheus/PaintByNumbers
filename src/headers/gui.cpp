@@ -132,11 +132,6 @@ GUI::GUI(GLFWwindow *window) {
 
     PROGHANDLER::setupPrograms();
 
-    glfwSetWindowUserPointer(this->window, this);
-    glfwSetScrollCallback(this->window, [](GLFWwindow* window, double xoffset, double yoffset) {
-        GUI* gui = (GUI*)glfwGetWindowUserPointer(window);
-        gui->imageScale += yoffset;
-    });
 }
 
 void GUI::render(GLFWwindow* window) {
@@ -249,7 +244,7 @@ void GUI::render(GLFWwindow* window) {
             ImGui::Text("No image loaded");
         }
         
-        ImGui::SliderInt("imageScale", &this->imageScale, -20, 20);
+        ImGui::SliderFloat("imageScale", &this->imageScale, -20, 20);
         ImGui::SliderFloat("imageScaleExponent", &this->imageScaleExponent, 0.1, 10);
         ImGui::SliderFloat("imageSCaleIncrement", &this->imageScaleImcrement, 0.1, 10);
 
@@ -526,14 +521,23 @@ void GUI::handleInput() {
 
     if (ImGui::IsKeyPressed(ImGuiKey_Comma)) this->fontSize--;
     else if (ImGui::IsKeyPressed(ImGuiKey_Period)) this->fontSize++;
-
+    
     if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
         ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
         ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
-        this->imagePosition.x += delta.x / 6 * this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
-        this->imagePosition.y += delta.y / 6 * this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+        if (std::abs(delta.x) < 50 && std::abs(delta.y) < 50) {
+            // prevents teleport due to input multithread
+            this->imagePosition.x += delta.x / 6 * this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+            this->imagePosition.y += delta.y / 6 * this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+        }
     }
-
-
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+        ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Middle);
+        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Middle);
+        if (std::abs(delta.x) < 50 && std::abs(delta.y) < 50) {
+            // prevents teleport due to input multithread
+            this->imageScale += delta.y / 50;
+        }
+    }
 
 }

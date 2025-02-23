@@ -39,7 +39,7 @@ private:
     GLuint fontTex;
 
     ImVec2 imagePosition;
-    int imageScale;
+    float imageScale;
     float imageScaleExponent;
     float imageScaleImcrement;
 

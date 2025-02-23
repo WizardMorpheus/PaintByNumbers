@@ -4,6 +4,7 @@
 #include "headers/glWrap.h"
 
 #include <iostream>
+#include <thread>
 
 void processInput(GLFWwindow *window);
 
@@ -36,21 +37,24 @@ int main(int argc, char** argv)
 	//gui.limitFPS(60);
 	// render loop
 	// -----------
+
+	std::thread inputThread([&]() {
+		while (!glfwWindowShouldClose(win)) {
+			processInput(win);
+			gui.handleInput();
+			glfwPollEvents();
+		}
+	});
 	while (!glfwWindowShouldClose(win))
 	{
 		// input
 		// // -----
-		processInput(win);
-		gui.handleInput();
-
 		gui.render(win);		
-
-
 		// // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
 		// // -------------------------------------------------------------------------------
 		glfwSwapBuffers(win);
-		glfwPollEvents();
 	}
+	inputThread.join();
 
 	gui.cleanup();
 
