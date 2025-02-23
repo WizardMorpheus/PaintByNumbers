@@ -10,7 +10,8 @@
 
 class GUI {
 private:
-	// Our state
+    GLFWwindow* window;
+
     bool fileMenuOpen;
     bool loading;
     bool saving;
@@ -41,6 +42,8 @@ private:
     int imageScale;
     float imageScaleExponent;
     float imageScaleImcrement;
+
+    float lastMouseScroll;
 
     void getImageSizeAndOffsetInBoundingBox(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
     void getImageSizeAndOffsetInWindow(GLuint Tex, ImVec2 windowSize, ImVec2* adjustedSize, ImVec2* offset);

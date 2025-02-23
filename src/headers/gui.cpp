@@ -1,4 +1,4 @@
-#include "GUI.h"
+#include "gui.h"
 
 #include "opengl.h"
 #include "ImVec_overrides.h"
@@ -101,12 +101,13 @@ GUI::GUI(GLFWwindow *window) {
     this->crntSegmentID = 0;
     this->crntOverlayID = 0;
     this->fontTex = 0;
-    GLWRAP::loadTex("..\\..\\resources\\textures\\fontTex.png", &this->fontTex);
+    GLWRAP::loadTex("resources\\textures\\fontTex.png", &this->fontTex);
 
     this->imagePosition = ImVec2(0,0);
     this->imageScale = 0;
     this->imageScaleExponent = 1.1;
     this->imageScaleImcrement = 5.0;
+    this->window = window;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -130,6 +131,12 @@ GUI::GUI(GLFWwindow *window) {
     ImGui_ImplOpenGL3_Init("#version 130");
 
     PROGHANDLER::setupPrograms();
+
+    glfwSetWindowUserPointer(this->window, this);
+    glfwSetScrollCallback(this->window, [](GLFWwindow* window, double xoffset, double yoffset) {
+        GUI* gui = (GUI*)glfwGetWindowUserPointer(window);
+        gui->imageScale += yoffset;
+    });
 }
 
 void GUI::render(GLFWwindow* window) {
@@ -416,7 +423,7 @@ void GUI::render(GLFWwindow* window) {
 
 
     if (this->manualOpen) {
-        if (ImGui::Begin("Manual", &this->manualOpen, ImGuiWindowFlags_NoResize)) {
+        if (ImGui::Begin("Manual", &this->manualOpen)) {
             ImGui::SetWindowFocus("Manual");
             ImGui::Text(R"V0G0N(
                                     Hello
@@ -519,5 +526,14 @@ void GUI::handleInput() {
 
     if (ImGui::IsKeyPressed(ImGuiKey_Comma)) this->fontSize--;
     else if (ImGui::IsKeyPressed(ImGuiKey_Period)) this->fontSize++;
+
+    if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
+        ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
+        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Right);
+        this->imagePosition.x += delta.x / 6 * this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+        this->imagePosition.y += delta.y / 6 * this->imageScaleImcrement * std::pow(this->imageScaleExponent, -this->imageScale);
+    }
+
+
 
 }
