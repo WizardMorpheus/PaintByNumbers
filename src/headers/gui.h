@@ -35,6 +35,7 @@ private:
     float colorData[16*4];
 
     GLuint crntTexID;
+    GLuint demoTexID;
     GLuint crntQuantID;
     GLuint crntSegmentID;
     GLuint crntOverlayID;
@@ -56,6 +57,8 @@ private:
     GLuint videoTexID;
     std::mutex crntTexMutex;
 
+    bool allowCrntTexManipulation;
+
     void getImageSizeAndOffsetInBoundingBox(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
     void getImageSizeAndOffsetInWindow(GLuint Tex, ImVec2 windowSize, ImVec2* adjustedSize, ImVec2* offset);
 
@@ -76,6 +79,7 @@ public:
 
     void setColor(int index, float* color);
     void setCrntTexId(GLuint texID);
+    GLuint& getDemoTexId();
 
     void handleInput();
 

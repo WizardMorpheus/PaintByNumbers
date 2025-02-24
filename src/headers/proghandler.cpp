@@ -34,7 +34,7 @@ void PROGHANDLER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, i
 
 
     // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dims[0], dims[1], 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
 
     // Poor filtering. Needed !
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -58,10 +58,12 @@ void PROGHANDLER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, i
 
     // Render to our framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);
-    glViewport(0,0,dims[0],dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
+    glViewport(0, 0, dims[0], dims[1]); // Render on the whole framebuffer, complete from the lower left corner to the upper right
 
 
     glBindVertexArray(PROGHANDLER::VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, PROGHANDLER::VBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, PROGHANDLER::EBO);
 
     glUseProgram(PROGHANDLER::quantizerProgramID);
 
@@ -74,7 +76,7 @@ void PROGHANDLER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, i
     glUniform1i(glGetUniformLocation(PROGHANDLER::quantizerProgramID, "highlightedColor"), highlightedColor);
     
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); //3 vertices * 2 triangles
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // 3 vertices * 2 triangles
 
 
     for (int i = 0; i < smooth; i++) {
@@ -183,6 +185,7 @@ void PROGHANDLER::quantize(GLuint tex, GLuint *quantizedTex, float* colorData, i
 
 
     glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDeleteFramebuffers(1, &Framebuffer);
 
@@ -262,7 +265,6 @@ void PROGHANDLER::genSegments(GLuint quantizedTex, GLuint *segmentTex) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-
 }
 
 void PROGHANDLER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex, float* tex1UV0, float* tex1UV1, float* tex2UV0, float* tex2UV1) {
@@ -275,7 +277,7 @@ void PROGHANDLER::overlayTextures(GLuint tex1, GLuint tex2, GLuint *overlayTex, 
     int dims[2];
     GLWRAP::queryTex(tex1, dims, GL_TEXTURE_2D);
 
-    // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
+    // The Viewportframebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
     GLuint Framebuffer = 0;
     glGenFramebuffers(1, &Framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, Framebuffer);

@@ -104,6 +104,7 @@ GUI::GUI(GLFWwindow *window) {
     this->crntOverlayID = 0;
     this->fontTex = 0;
     GLWRAP::loadTex("resources\\textures\\fontTex.png", &this->fontTex);
+    glGenTextures(1, &this->demoTexID);
 
     this->imagePosition = ImVec2(0,0);
     this->imageScale = 0;
@@ -114,6 +115,8 @@ GUI::GUI(GLFWwindow *window) {
     this->stopVideoThread = false;
     this->videoThreadRunning = false;
     this->videoPath = "";
+
+    this->allowCrntTexManipulation = true;
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -141,7 +144,43 @@ GUI::GUI(GLFWwindow *window) {
 }
 
 void GUI::render(GLFWwindow* window) {
+    if (this->allowCrntTexManipulation) {
+        if (this->crntTexID != 0) glDeleteTextures(1, &this->crntTexID);
 
+        int dims[2];
+        GLWRAP::queryTex(this->demoTexID, dims, GL_TEXTURE_2D);
+        // glViewport(0, 0, dims[0], dims[1]);
+
+        glGenTextures(1, &this->crntTexID);
+        glBindTexture(GL_TEXTURE_2D, this->crntTexID);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, dims[0], dims[1]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+        GLuint drawBuffer = 0;
+		glGenFramebuffers(1, &drawBuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, drawBuffer);
+		glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, this->crntTexID, 0);
+
+        GLuint readBuffer = 0;
+		glGenFramebuffers(1, &readBuffer);
+		glBindFramebuffer(GL_FRAMEBUFFER, readBuffer);
+		glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, this->demoTexID, 0);
+
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, readBuffer);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawBuffer);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+		glBlitFramebuffer(0, 0, dims[0], dims[1], 0, 0, dims[0], dims[1], GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+		glDeleteFramebuffers(1, &drawBuffer);
+		glDeleteFramebuffers(1, &readBuffer);
+		requantize();
+    }
     glClearColor(0.3, 0.4, 0.4, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -169,10 +208,12 @@ void GUI::render(GLFWwindow* window) {
 
         if (ImGui::MenuItem("help?")) this->manualOpen = true;
 
+        ImGui::Checkbox("Demo", &this->allowCrntTexManipulation);
+
         ImGui::Separator();
 
         if (this->crntTexID != 0) {
-            ImGui::Checkbox("Quantize", &this->quantized);
+            if (ImGui::Checkbox("Quantize", &this->quantized)) requantize();
             ImGui::Checkbox("Show PBN Segments", &this->showSegments);
             if (ImGui::InputInt("Smooth", &this->smooth)) requantize();
         }
@@ -202,7 +243,7 @@ void GUI::render(GLFWwindow* window) {
 
         if (ImGui::Button("Randomize Color Pallette")) {
             PROGHANDLER::calcBestColors(this->crntTexID, this->colorData, this->numColors, true);// arbitrary depth should be enough
-            requantize();
+            // requantize();
         }
         if (ImGui::Button("'Guess' Best Colors")) {
             PROGHANDLER::calcBestColors(this->crntTexID, this->colorData, this->numColors, false);// arbitrary depth should be enough
@@ -556,7 +597,7 @@ void GUI::cleanup() {
 
 void GUI::framebufferSizeCallback(GLFWwindow *window, int width, int height) {
     this->io.DisplaySize = ImVec2(width, height);
-    this->render(window);
+    // this->render(window);
 }
 
 bool GUI::getQuantized() {
@@ -575,7 +616,16 @@ void GUI::setColor(int index, float *color) {
 }
 
 void GUI::setCrntTexId(GLuint texID) {
+    if (!this->allowCrntTexManipulation) return;
+    if (this->crntTexID != texID) {
+        glDeleteTextures(1, &this->crntTexID);
+    }
     this->crntTexID = texID;
+}
+
+GLuint& GUI::getDemoTexId()
+{
+    return this->demoTexID;
 }
 
 void GUI::handleInput() {
