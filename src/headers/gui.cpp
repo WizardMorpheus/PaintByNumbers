@@ -17,6 +17,7 @@
 #include <format>
 #include <vector>
 #include <string>
+#include <chrono>
 
 const std::vector<std::string> loadFileTypes = { ".jpeg", ".jpg", ".png" , ".tga", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".pnm"};
 const std::vector<std::string> saveFileTypes = { ".jpg", ".png" , ".tga", ".bmp"};
@@ -471,7 +472,7 @@ void GUI::render(GLFWwindow* window) {
                     p.replace_filename(p.stem().generic_string().substr(0, p.stem().generic_string().length() - i) + fmtStr.c_str() + p.extension().generic_string());
                     this->updateCrntTex = true;
                     this->videoPathMutex.unlock();
-                    sleep(1);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
                 this->stopVideoThread = false;
                 return;

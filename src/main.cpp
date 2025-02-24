@@ -34,7 +34,6 @@ int main(int argc, char** argv)
 	});
 
 
-	//gui.limitFPS(60);
 	// render loop
 	// -----------
 
