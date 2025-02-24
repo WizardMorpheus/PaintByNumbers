@@ -7,6 +7,7 @@
 #include "timer.h"
 
 #include <vector>
+#include <thread>
 
 class GUI {
 private:
@@ -14,6 +15,7 @@ private:
 
     bool fileMenuOpen;
     bool loading;
+    bool loadingVideo;
     bool saving;
     bool manualOpen;
     bool quantized;
@@ -44,6 +46,15 @@ private:
     float imageScaleImcrement;
 
     float lastMouseScroll;
+
+    std::thread videoThread;
+    bool stopVideoThread;
+    bool videoThreadRunning;
+    std::mutex videoPathMutex;
+    std::filesystem::path videoPath;
+    bool updateCrntTex;
+    GLuint videoTexID;
+    std::mutex crntTexMutex;
 
     void getImageSizeAndOffsetInBoundingBox(GLuint Tex, ImVec2 boundingBox, ImVec2 *adjustedSize, ImVec2 *reqOffset);
     void getImageSizeAndOffsetInWindow(GLuint Tex, ImVec2 windowSize, ImVec2* adjustedSize, ImVec2* offset);

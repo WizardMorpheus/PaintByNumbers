@@ -62,7 +62,10 @@
     "charconv": "cpp",
     "chrono": "cpp",
     "span": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "semaphore": "cpp",
+    "stop_token": "cpp",
+    "thread": "cpp"
   },
   "cmake.configureOnOpen": true,
 }

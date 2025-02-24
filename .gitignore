@@ -5,4 +5,5 @@ lib/*
 include/GLFW
 build
 resources/.installed
+resources/testImages/**/*
 imgui.ini

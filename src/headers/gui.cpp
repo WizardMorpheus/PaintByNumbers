@@ -79,6 +79,7 @@ GUI::GUI(GLFWwindow *window) {
     this->loading = false;
     this->saving = false;
     this->quantized = false;
+    this->happyMistake = false;
     this->showSegments = false;
     this->smooth = false;
     this->labelling = false;
@@ -108,6 +109,10 @@ GUI::GUI(GLFWwindow *window) {
     this->imageScaleExponent = 1.1;
     this->imageScaleImcrement = 5.0;
     this->window = window;
+
+    this->stopVideoThread = false;
+    this->videoThreadRunning = false;
+    this->videoPath = "";
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -153,6 +158,10 @@ void GUI::render(GLFWwindow* window) {
                 this->loadDialog.Open();
                 this->loading = true;
             }
+            if (ImGui::MenuItem("Load Video")) {
+                this->loadDialog.Open();
+                this->loadingVideo = true;
+            }
 
             ImGui::EndMenu();
         }
@@ -165,8 +174,6 @@ void GUI::render(GLFWwindow* window) {
             ImGui::Checkbox("Quantize", &this->quantized);
             ImGui::Checkbox("Show PBN Segments", &this->showSegments);
             if (ImGui::InputInt("Smooth", &this->smooth)) requantize();
-            if (ImGui::Checkbox("Happy Mistake", &this->happyMistake)) requantize();
-
         }
         
         this->mainMenuHeight = ImGui::GetWindowHeight();
@@ -264,6 +271,17 @@ void GUI::render(GLFWwindow* window) {
         ImGui::SetCursorPos(ImVec2(0, 0));
 
 
+        this->videoPathMutex.lock();
+        if (this->updateCrntTex) {
+            this->updateCrntTex = false;
+            GLWRAP::loadTex(this->videoPath.generic_string().c_str(), &this->videoTexID);
+            if (this->videoTexID != 0)  {
+                this->crntTexID = this->videoTexID;
+                requantize();
+            }
+        }
+        this->videoPathMutex.unlock();
+
         if (this->labelling) {
             if (this->crntQuantID != 0) {
                 if (this->crntOverlayID != this->crntQuantID && this->crntOverlayID != this->crntTexID)
@@ -334,7 +352,6 @@ void GUI::render(GLFWwindow* window) {
                     GLWRAP::saveTex(fileName.c_str(), fileExtension.c_str(), &this->crntSegmentID);
 
                     // save render
-                    this->happyMistake = false;
                     this->highlightedColor = -1;
                     requantize();
                     fileName.insert(fileName.length() - 4, "_colored");
@@ -394,12 +411,18 @@ void GUI::render(GLFWwindow* window) {
             }
 
         }
-
         ImGui::End();
     }
 
 
     if (this->loading) {
+        if (this->videoThreadRunning) {
+            if (!this->videoThread.joinable()) {
+                this->stopVideoThread = true;
+            }
+            this->videoThread.join();
+            this->videoThreadRunning = false;
+        }
         this->loadDialog.Display();
         if (this->loadDialog.HasSelected()) {
             // load
@@ -413,6 +436,50 @@ void GUI::render(GLFWwindow* window) {
             this->loadDialog.ClearSelected();
             this->loadDialog.Close();
             this->loading = false;
+        }
+    }
+    if (this->loadingVideo) {
+        if (this->videoThreadRunning) {
+            if (!this->videoThread.joinable()) {
+                this->stopVideoThread = true;
+            }
+            this->videoThread.join();
+            this->videoThreadRunning = false;
+        }
+        this->loadDialog.Display();
+        if (this->loadDialog.HasSelected()) {
+            this->videoPath = this->loadDialog.GetSelected().generic_string();
+                // load
+            this->videoThread = std::thread([&]() {
+                std::filesystem::path& p = this->videoPath;
+                while (std::filesystem::is_regular_file(p)) {
+                    if (this->stopVideoThread) {
+                        this->stopVideoThread = false;
+                        return;
+                    }
+                    
+
+                    int i = 0;
+                    while (std::isdigit(p.stem().generic_string().at(p.stem().generic_string().length() - 1 - i))) i++;
+                    std::string end = p.stem().generic_string().substr(p.stem().generic_string().length() - i, p.stem().generic_string().length() - 1);
+                    int newnum = std::stoi(end);
+                    std::string fmtStr = "%0" + std::to_string(i) + "d";
+                    char* fmt = new char[fmtStr.length() + 1];
+                    std::strcpy(fmt, fmtStr.c_str());
+                    std::sprintf(fmtStr.data(), fmt, newnum + 1);
+                    this->videoPathMutex.lock();
+                    p.replace_filename(p.stem().generic_string().substr(0, p.stem().generic_string().length() - i) + fmtStr.c_str() + p.extension().generic_string());
+                    this->updateCrntTex = true;
+                    this->videoPathMutex.unlock();
+                    sleep(1);
+                }
+                this->stopVideoThread = false;
+                return;
+            });
+            this->videoThreadRunning = true;
+            this->loadDialog.ClearSelected();
+            this->loadDialog.Close();
+            this->loadingVideo = false;
         }
     }
 
